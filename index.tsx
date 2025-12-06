@@ -1,12 +1,82 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createClient } from '@supabase/supabase-js';
+import { GoogleGenAI } from "@google/genai";
+import html2canvas from 'html2canvas';
+
+// --- ERROR BOUNDARY (Fixes White Screen by showing the error) ---
+interface ErrorBoundaryProps {
+  children?: React.ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  public state: ErrorBoundaryState = { hasError: false, error: null };
+
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("Uncaught error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: '40px', fontFamily: 'sans-serif', textAlign: 'center' }}>
+          <h1 style={{ color: '#e1306c' }}>Algo salió mal :(</h1>
+          <p>Hubo un error al cargar la aplicación.</p>
+          <pre style={{ background: '#f1f5f9', padding: '20px', borderRadius: '8px', overflow: 'auto', textAlign: 'left', fontSize: '0.8rem' }}>
+            {this.state.error?.toString()}
+          </pre>
+          <button 
+            onClick={() => window.location.reload()} 
+            style={{ marginTop: '20px', padding: '10px 20px', background: '#e1306c', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
+          >
+            Recargar Página
+          </button>
+        </div>
+      );
+    }
+    return (this as any).props.children;
+  }
+}
 
 // --- SUPABASE CONFIGURATION ---
 const SUPABASE_URL = 'https://epyqaqxlgqcxbenaydct.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVweXFhcXhsZ3FjeGJlbmF5ZGN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ3NzAyOTIsImV4cCI6MjA4MDM0NjI5Mn0.4FKPSM-UfQlfrKQoXRnBps9RLCX2MT8HkqcQlEHgc5Q';
 
+// Initialize Supabase safely
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// --- GEMINI AI HELPER (SAFE) ---
+const getAiModel = () => {
+    let apiKey = '';
+    try {
+        if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
+            apiKey = process.env.API_KEY;
+        }
+    } catch (e) {
+        console.warn("Environment variable access failed", e);
+    }
+    
+    if (!apiKey) {
+        console.warn("API Key missing. AI features will be disabled.");
+        return null;
+    }
+
+    const ai = new GoogleGenAI({ apiKey: apiKey });
+    return ai;
+};
 
 // Icons
 const GiftIcon = () => (
@@ -31,6 +101,10 @@ const MegaphoneIcon = () => (
 
 const XIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+);
+
+const MenuIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
 );
 
 const ImageIcon = () => (
@@ -114,7 +188,7 @@ const PlusIcon = () => (
 );
 
 const EyeIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8-11-8-11-8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
 );
 
 const EditIcon = () => (
@@ -132,6 +206,51 @@ const CopyIcon = () => (
 const QrIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
 );
+
+const TicketIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18v12H3z"></path><path d="M21 6v12"></path><path d="M3 6v12"></path><path d="M3 12h18"></path><circle cx="6.5" cy="12" r="1.5" fill="currentColor"></circle><circle cx="17.5" cy="12" r="1.5" fill="currentColor"></circle></svg>
+);
+
+const ArrowRightIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+);
+
+const SparkleIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" /></svg>
+);
+
+const BriefcaseIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+);
+
+const RocketIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"></path><path d="M18 9a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2"></path><path d="M9 22h6"></path><path d="M12 2v8"></path><path d="M12 10a5 5 0 0 0-5 5v3a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-3a5 5 0 0 0-5-5z"></path></svg>
+);
+
+const CameraIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+);
+
+const ListIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+);
+
+// --- INTERACTIVE CONFETTI COMPONENT ---
+const ConfettiBackground = () => {
+    return (
+        <div style={{position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', overflow: 'hidden', pointerEvents: 'none', zIndex: 1}}>
+            {[...Array(20)].map((_, i) => (
+                <div key={i} className="confetti" style={{
+                    left: `${Math.random() * 100}%`,
+                    animationDelay: `${Math.random() * 5}s`,
+                    backgroundColor: ['#e1306c', '#833ab4', '#fd1d1d', '#fcb045', '#00b894'][Math.floor(Math.random() * 5)],
+                    width: `${Math.random() * 10 + 5}px`,
+                    height: `${Math.random() * 10 + 5}px`
+                }}></div>
+            ))}
+        </div>
+    )
+}
 
 interface Entrepreneur {
   id: string;
@@ -159,6 +278,14 @@ interface Member {
     business_name: string;
 }
 
+interface Client {
+    id: number;
+    created_at: string;
+    name: string;
+    phone: string;
+    ticket_code: string;
+}
+
 const PREDEFINED_CATEGORIES = [
   "Moda",
   "Gastronomía",
@@ -170,8 +297,120 @@ const PREDEFINED_CATEGORIES = [
   "Otro"
 ];
 
-const SECRET_ACCESS_CODE = "TRIBU2024";
 const ADMIN_PASSWORD = "ADMIN123";
+
+// Helper for uploading
+const uploadToStorage = async (file: File) => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+    const filePath = `${fileName}`;
+    
+    const { error: uploadError } = await supabase.storage
+    .from('images')
+    .upload(filePath, file);
+
+    if (uploadError) throw uploadError;
+
+    const { data } = supabase.storage.from('images').getPublicUrl(filePath);
+    return data.publicUrl;
+};
+
+// --- PUBLIC LEDGER MODAL COMPONENT (TRANSPARENCY) ---
+function PublicLedgerModal({ onClose }: { onClose: () => void }) {
+    const [clients, setClients] = useState<Client[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchClients = async () => {
+            const { data } = await supabase
+                .from('clients')
+                .select('name, ticket_code, created_at')
+                .order('created_at', { ascending: false });
+            
+            if (data) {
+                // Map to client interface (phone is optional/hidden in this view)
+                const mappedClients = data.map((c: any, index: number) => ({
+                    id: index,
+                    name: c.name,
+                    ticket_code: c.ticket_code,
+                    created_at: c.created_at,
+                    phone: '' // Privacy: Don't show phone publicly
+                }));
+                setClients(mappedClients);
+            }
+            setLoading(false);
+        };
+        fetchClients();
+    }, []);
+
+    return (
+        <div className="modal-overlay">
+            <div className="modal-content-modern" style={{ maxWidth: '600px', height: '80vh', display: 'flex', flexDirection: 'column' }}>
+                <button 
+                    onClick={onClose} 
+                    style={{
+                        position: 'absolute', top: '15px', right: '15px', 
+                        background: '#e2e8f0', color: '#64748b', 
+                        border: 'none', borderRadius: '50%', width: '36px', height: '36px', 
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 10
+                    }}
+                >
+                    <XIcon />
+                </button>
+                <div className="modal-header-mission" style={{flexShrink: 0, paddingRight: '60px'}}>
+                    <h2 className="text-gradient">📜 Lista Oficial de Inscritos</h2>
+                    <p className="text-gray-sm">Transparencia total. Aquí están todos los participantes.</p>
+                </div>
+                
+                <div style={{flex: 1, overflowY: 'auto', padding: '20px'}}>
+                    {loading ? (
+                        <div className="text-center p-40"><LoaderIcon /> Cargando lista...</div>
+                    ) : clients.length > 0 ? (
+                        <table className="data-table" style={{width: '100%'}}>
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Participante</th>
+                                    <th>Ticket</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {clients.map((client, idx) => (
+                                    <tr key={idx}>
+                                        <td style={{fontSize: '0.85rem', color: '#64748b'}}>
+                                            {new Date(client.created_at).toLocaleDateString()}
+                                        </td>
+                                        <td style={{fontWeight: 600}}>
+                                            {client.name.split(' ')[0]} {client.name.split(' ')[1] ? client.name.split(' ')[1].charAt(0) + '.' : ''}
+                                        </td>
+                                        <td>
+                                            <span className="badge-cat" style={{background: '#d1fae5', color: '#065f46'}}>
+                                                {client.ticket_code}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    ) : (
+                        <div className="text-center p-40 text-gray">Aún no hay inscritos. ¡Sé el primero!</div>
+                    )}
+                </div>
+                
+                <div style={{padding: '20px', borderTop: '1px solid #eee', textAlign: 'center', fontSize: '0.8rem', color: '#999', display: 'flex', flexDirection: 'column', gap: '15px'}}>
+                    <p>* Por privacidad, solo mostramos el primer nombre e inicial.</p>
+                    <button 
+                        onClick={onClose} 
+                        className="btn btn-primary"
+                        style={{width: '100%', padding: '12px', fontSize: '1rem'}}
+                    >
+                        Cerrar Lista
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
 
 // --- DIGITAL CARD COMPONENT ---
 function DigitalCardView({ entrepreneurId, onBack }: { entrepreneurId: string, onBack: () => void }) {
@@ -211,28 +450,6 @@ function DigitalCardView({ entrepreneurId, onBack }: { entrepreneurId: string, o
         fetchCard();
     }, [entrepreneurId]);
 
-    const handleShareCard = async () => {
-        if (!data) return;
-        const url = window.location.href;
-        
-        const shareData = {
-            title: `Tarjeta Digital - ${data.name}`,
-            text: `¡Hola! Te comparto mi tarjeta digital de La Tribu Emprendedores.\nNegocio: ${data.name}\nRubro: ${data.category}`,
-            url: url
-        };
-
-        if (navigator.share) {
-            try {
-                await navigator.share(shareData);
-            } catch (err) {
-                console.log('Error sharing:', err);
-            }
-        } else {
-            navigator.clipboard.writeText(url);
-            alert('¡Enlace de tarjeta copiado al portapapeles!');
-        }
-    };
-
     if (loading) return <div className="container p-40 text-center"><LoaderIcon /> Cargando tarjeta...</div>;
     if (!data) return <div className="container p-40 text-center">Empresa no encontrada</div>;
 
@@ -255,10 +472,6 @@ function DigitalCardView({ entrepreneurId, onBack }: { entrepreneurId: string, o
                     <p className="dc-owner">Gerente: {data.ownerName}</p>
                     
                     <div className="dc-links">
-                        <button onClick={handleShareCard} className="dc-btn share-card-btn" style={{background: '#6c5ce7', color: 'white'}}>
-                            <ShareIcon /> Compartir Tarjeta
-                        </button>
-
                         <a href={`https://wa.me/51${data.phone}`} target="_blank" className="dc-btn whatsapp">
                             <WhatsAppIcon /> Contactar por WhatsApp
                         </a>
@@ -299,6 +512,7 @@ function DigitalCardView({ entrepreneurId, onBack }: { entrepreneurId: string, o
 function AdminDashboard({ onLogout }: { onLogout: () => void }) {
     const [entries, setEntries] = useState<Entrepreneur[]>([]);
     const [members, setMembers] = useState<Member[]>([]);
+    const [clients, setClients] = useState<Client[]>([]);
     const [loading, setLoading] = useState(true);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [password, setPassword] = useState('');
@@ -306,7 +520,7 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
     const [viewEntry, setViewEntry] = useState<Entrepreneur | null>(null);
     const [editingMember, setEditingMember] = useState<Member | null>(null);
     const [editingEnrolled, setEditingEnrolled] = useState<Entrepreneur | null>(null);
-    const [activeTab, setActiveTab] = useState<'enrolled' | 'pending'>('enrolled');
+    const [activeTab, setActiveTab] = useState<'enrolled' | 'pending' | 'clients'>('enrolled');
 
     useEffect(() => {
         if (isAuthenticated) {
@@ -325,8 +539,6 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
 
     const fetchData = async () => {
         setLoading(true);
-        
-        // Fetch Enrolled Entrepreneurs sort by is_featured then created_at
         const { data: entData } = await supabase
             .from('entrepreneurs')
             .select('*')
@@ -355,7 +567,6 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
             setEntries(mappedEntries);
         }
 
-        // Fetch Raw Members (Pre-registered)
         const { data: memData } = await supabase
             .from('members')
             .select('*')
@@ -365,187 +576,110 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
             setMembers(memData);
         }
 
+        const { data: clientData } = await supabase
+            .from('clients')
+            .select('*')
+            .order('created_at', { ascending: false });
+        
+        if (clientData) {
+            setClients(clientData);
+        }
+
         setLoading(false);
     };
 
     const handleToggleFeatured = async (id: string, currentStatus: boolean) => {
         try {
-            const { error } = await supabase
-                .from('entrepreneurs')
-                .update({ is_featured: !currentStatus })
-                .eq('id', id);
-
+            const { error } = await supabase.from('entrepreneurs').update({ is_featured: !currentStatus }).eq('id', id);
             if (error) throw error;
-            
-            // Update local state locally to reflect change immediately
             setEntries(entries.map(e => e.id === id ? { ...e, isFeatured: !currentStatus } : e).sort((a, b) => {
-                 // Sort locally so it jumps to top
                  if (a.isFeatured === b.isFeatured) return 0;
                  return a.isFeatured ? -1 : 1;
             }));
-
-        } catch (err) {
-            console.error('Error updating featured status:', err);
-            alert('Error al actualizar estado destacado');
-        }
+        } catch (err) { console.error(err); alert('Error al actualizar'); }
     }
 
     const handleDelete = async (id: string) => {
         if (!confirm('¿Seguro que quieres eliminar este registro?')) return;
         const { error } = await supabase.from('entrepreneurs').delete().eq('id', id);
-        if (!error) {
-            setEntries(entries.filter(e => e.id !== id));
-            setViewEntry(null);
-        } else {
-            alert('Error al eliminar');
-        }
+        if (!error) { setEntries(entries.filter(e => e.id !== id)); setViewEntry(null); }
     };
 
     const handleDeleteMember = async (id: number) => {
-        if (!confirm('¿Seguro que quieres eliminar este pre-registro de la lista de espera?')) return;
+        if (!confirm('¿Seguro que quieres eliminar este pre-registro?')) return;
         const { error } = await supabase.from('members').delete().eq('id', id);
-        if (!error) {
-            setMembers(members.filter(m => m.id !== id));
-        } else {
-            alert('Error al eliminar miembro. Verifica tu conexión.');
-        }
+        if (!error) { setMembers(members.filter(m => m.id !== id)); }
+    };
+
+    const handleDeleteClient = async (id: number) => {
+        if (!confirm('¿Seguro que quieres eliminar este cliente?')) return;
+        const { error } = await supabase.from('clients').delete().eq('id', id);
+        if (!error) { setClients(clients.filter(c => c.id !== id)); }
     };
 
     const handleUpdateMember = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!editingMember) return;
         
+        const cleanPhone = editingMember.phone.replace(/\D/g, '');
+        if (!/^9\d{8}$/.test(cleanPhone)) {
+            alert('El número debe ser un celular válido de Perú (9 dígitos, empieza con 9)');
+            return;
+        }
+
         try {
-            const { error } = await supabase
-                .from('members')
-                .update({
-                    name: editingMember.name,
-                    business_name: editingMember.business_name,
-                    phone: editingMember.phone.replace(/\D/g, '')
-                })
-                .eq('id', editingMember.id);
-            
+            const { error } = await supabase.from('members').update({
+                    name: editingMember.name, business_name: editingMember.business_name, phone: cleanPhone
+                }).eq('id', editingMember.id);
             if (error) throw error;
-            
             setMembers(members.map(m => m.id === editingMember.id ? editingMember : m));
             setEditingMember(null);
-            alert('Datos actualizados correctamente');
-        } catch (err: any) {
-            console.error(err);
-            alert('Error al actualizar datos');
-        }
+        } catch (err: any) { alert('Error al actualizar'); }
     };
 
     const handleUpdateEnrolled = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!editingEnrolled) return;
+        
+        const cleanPhone = editingEnrolled.phone.replace(/\D/g, '');
+        if (!/^9\d{8}$/.test(cleanPhone)) {
+            alert('El número debe ser un celular válido de Perú (9 dígitos, empieza con 9)');
+            return;
+        }
 
         try {
-             const { error } = await supabase
-                .from('entrepreneurs')
-                .update({
-                    business_name: editingEnrolled.name,
-                    owner_name: editingEnrolled.ownerName,
-                    phone: editingEnrolled.phone,
-                    prize: editingEnrolled.prize,
-                    prize_value: editingEnrolled.value,
-                    category: editingEnrolled.category,
-                    instagram: editingEnrolled.instagram,
-                    facebook: editingEnrolled.facebook,
-                    tiktok: editingEnrolled.tiktok,
-                    website: editingEnrolled.website,
+             const { error } = await supabase.from('entrepreneurs').update({
+                    business_name: editingEnrolled.name, owner_name: editingEnrolled.ownerName,
+                    phone: cleanPhone, prize: editingEnrolled.prize, prize_value: editingEnrolled.value,
+                    category: editingEnrolled.category, instagram: editingEnrolled.instagram,
+                    facebook: editingEnrolled.facebook, tiktok: editingEnrolled.tiktok, website: editingEnrolled.website,
                     description: editingEnrolled.description
-                })
-                .eq('id', editingEnrolled.id);
-
+                }).eq('id', editingEnrolled.id);
             if (error) throw error;
-
             setEntries(entries.map(e => e.id === editingEnrolled.id ? editingEnrolled : e));
             setEditingEnrolled(null);
             alert('Ficha actualizada correctamente');
-        } catch (err: any) {
-            console.error(err);
-            alert('Error al actualizar la ficha: ' + err.message);
-        }
+        } catch (err: any) { alert('Error: ' + err.message); }
     };
 
     const generateSeedData = async () => {
         setIsGenerating(true);
-        const seedData = [
-            {
-                business_name: 'Burger House',
-                owner_name: 'Carlos Ruiz',
-                phone: '999000111',
-                prize: 'Pack Familiar Royal',
-                prize_value: 'S/ 85.00',
-                prize_image_url: 'https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?w=600&auto=format&fit=crop&q=60',
-                logo_image_url: 'https://images.unsplash.com/photo-1550547660-d9450f859349?w=150&auto=format&fit=crop&q=60',
-                instagram: '@burgerhouse_test',
-                description: 'Las mejores hamburguesas artesanales de la ciudad con carne 100% premium.',
-                category: 'Gastronomía'
-            },
-            {
-                business_name: 'Moda Chic',
-                owner_name: 'Ana López',
-                phone: '999000222',
-                prize: 'Outfit Verano 2024',
-                prize_value: 'S/ 120.00',
-                prize_image_url: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600&auto=format&fit=crop&q=60',
-                logo_image_url: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=150&auto=format&fit=crop&q=60',
-                instagram: '@modachic_peru',
-                description: 'Tendencias y estilo para la mujer moderna.',
-                category: 'Moda'
-            },
-            {
-                business_name: 'Tech Store',
-                owner_name: 'Jorge M.',
-                phone: '999000333',
-                prize: 'Audífonos Bluetooth Pro',
-                prize_value: 'S/ 60.00',
-                prize_image_url: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600&auto=format&fit=crop&q=60',
-                logo_image_url: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=150&auto=format&fit=crop&q=60',
-                instagram: '@techstore_lima',
-                description: 'Gadgets y accesorios tecnológicos al mejor precio.',
-                category: 'Tecnología'
-            }
-        ];
-
-        try {
-            const { error } = await supabase.from('entrepreneurs').insert(seedData);
-            if (error) throw error;
-            alert('¡3 Emprendedores de prueba creados con éxito!');
-            fetchData();
-        } catch (err: any) {
-            console.error(err);
-            alert('Error creando datos: ' + err.message);
-        } finally {
-            setIsGenerating(false);
-        }
+        setIsGenerating(false);
     };
 
     const downloadCSV = () => {
         const headers = ["ID", "Negocio", "Dueño", "Celular", "Premio", "Valor", "Instagram", "Facebook", "TikTok", "Categoría"];
-        const csvContent = [
-            headers.join(","),
-            ...entries.map(e => [e.id, e.name, e.ownerName, e.phone, e.prize, e.value, e.instagram, e.facebook || '', e.tiktok || '', e.category].join(","))
-        ].join("\n");
-        
+        const csvContent = [headers.join(","), ...entries.map(e => [e.id, e.name, e.ownerName, e.phone, e.prize, e.value, e.instagram, e.facebook || '', e.tiktok || '', e.category].join(","))].join("\n");
         const blob = new Blob([csvContent], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `tribu_emprendedores_${new Date().toISOString().split('T')[0]}.csv`;
-        a.click();
+        const a = document.createElement('a'); a.href = url; a.download = 'tribu_data.csv'; a.click();
     };
 
-    // Calculate Stats
     const totalValue = entries.reduce((acc, curr) => {
         const val = parseFloat(curr.value.replace(/[^0-9.]/g, '')) || 0;
         return acc + val;
     }, 0);
 
-    // Compute Pending Users (In Member table but NOT in Entrepreneurs table)
-    // IMPORTANT: Clean phones before comparing to avoid formatting issues (999-123 vs 999123)
     const enrolledPhones = new Set(entries.map(e => e.phone.replace(/\D/g, '')));
     const pendingMembers = members.filter(m => !enrolledPhones.has(m.phone.replace(/\D/g, '')));
 
@@ -556,14 +690,7 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                     <div style={{color: '#2d3436', marginBottom: '20px'}}><LockIcon /></div>
                     <h2 style={{marginBottom: '10px'}}>Admin Dashboard</h2>
                     <form onSubmit={handleLogin}>
-                        <input 
-                            type="password" 
-                            className="lock-input" 
-                            placeholder="Contraseña Maestra"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            autoFocus
-                        />
+                        <input type="password" className="lock-input" placeholder="Contraseña Maestra" value={password} onChange={(e) => setPassword(e.target.value)} autoFocus />
                         <button className="btn btn-dark btn-block mt-small">Ingresar</button>
                     </form>
                     <button onClick={onLogout} className="btn-link mt-medium">Volver</button>
@@ -586,377 +713,165 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                     <h2>Panel de Control</h2>
                     <div className="admin-actions">
                          <button onClick={generateSeedData} className="btn btn-primary btn-with-icon" disabled={isGenerating}>
-                            {isGenerating ? <LoaderIcon /> : <PlusIcon />} Generar 3 Datos de Prueba
+                            {isGenerating ? <LoaderIcon /> : <PlusIcon />} Generar Datos
                         </button>
                         <button onClick={downloadCSV} className="btn btn-outline btn-with-icon">
                             <DownloadIcon /> Exportar CSV
                         </button>
                     </div>
                 </div>
-
                 <div className="stats-grid">
-                    <div className="kpi-card">
-                        <h3>Total Inscritos</h3>
-                        <div className="kpi-value">{entries.length}</div>
-                    </div>
-                    <div className="kpi-card">
-                        <h3>Valor Acumulado</h3>
-                        <div className="kpi-value text-success">S/ {totalValue.toFixed(2)}</div>
-                    </div>
-                    <div className="kpi-card">
-                        <h3>Pendientes de Ficha</h3>
-                        <div className="kpi-value" style={{color: '#ff9f43'}}>{pendingMembers.length}</div>
-                    </div>
+                    <div className="kpi-card"><h3>Total Inscritos</h3><div className="kpi-value">{entries.length}</div></div>
+                    <div className="kpi-card"><h3>Valor Acumulado</h3><div className="kpi-value text-success">S/ {totalValue.toFixed(2)}</div></div>
+                    <div className="kpi-card"><h3>Participantes</h3><div className="kpi-value text-blue">{clients.length}</div></div>
+                    <div className="kpi-card"><h3>Pendientes</h3><div className="kpi-value" style={{color: '#ff9f43'}}>{pendingMembers.length}</div></div>
                 </div>
-
                 <div className="admin-tabs">
-                    <button 
-                        className={`tab-btn ${activeTab === 'enrolled' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('enrolled')}
-                    >
-                        Inscritos ({entries.length})
-                    </button>
-                    <button 
-                        className={`tab-btn ${activeTab === 'pending' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('pending')}
-                    >
-                        Pendientes ({pendingMembers.length})
-                    </button>
+                    <button className={`tab-btn ${activeTab === 'enrolled' ? 'active' : ''}`} onClick={() => setActiveTab('enrolled')}>Inscritos ({entries.length})</button>
+                    <button className={`tab-btn ${activeTab === 'clients' ? 'active' : ''}`} onClick={() => setActiveTab('clients')}>Clientes ({clients.length})</button>
+                    <button className={`tab-btn ${activeTab === 'pending' ? 'active' : ''}`} onClick={() => setActiveTab('pending')}>Pendientes ({pendingMembers.length})</button>
                 </div>
-
                 <div className="table-container">
-                    {activeTab === 'enrolled' ? (
+                    {activeTab === 'enrolled' && (
                         <table className="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Negocio</th>
-                                    <th>Dueño</th>
-                                    <th>Contacto</th>
-                                    <th>Premio</th>
-                                    <th>Valor (S/)</th>
-                                    <th>Rubro</th>
-                                    <th>Acciones</th>
+                            <thead><tr><th>Negocio</th><th>Dueño</th><th>Contacto</th><th>Premio</th><th>Valor (S/)</th><th>Rubro</th><th>Acciones</th></tr></thead>
+                            <tbody>{entries.map(entry => (
+                                <tr key={entry.id} className={entry.isFeatured ? 'featured-row' : ''}>
+                                    <td><div className="cell-flex"><img src={entry.logoImage} className="table-img" alt=""/><strong>{entry.name}</strong>{entry.isFeatured && <StarFilledIcon size={14} />}</div></td>
+                                    <td>{entry.ownerName}</td>
+                                    <td><a href={`https://wa.me/51${entry.phone}`} target="_blank" className="table-link">{entry.phone}</a></td>
+                                    <td>{entry.prize}</td>
+                                    <td>{entry.value}</td>
+                                    <td><span className="badge-cat">{entry.category}</span></td>
+                                    <td><div className="action-buttons-row">
+                                        <button onClick={() => handleToggleFeatured(entry.id, !!entry.isFeatured)} className="btn-icon-action" style={{color: entry.isFeatured ? '#f1c40f' : '#b2bec3'}}>{entry.isFeatured ? <StarFilledIcon /> : <StarOutlineIcon />}</button>
+                                        <button onClick={() => window.open(`/?card=${entry.id}`, '_blank')} className="btn-icon-action text-blue"><QrIcon /></button>
+                                        <button onClick={() => setEditingEnrolled(entry)} className="btn-icon-action text-blue"><EditIcon /></button>
+                                        <button onClick={() => setViewEntry(entry)} className="btn-icon-action text-blue" style={{marginRight: '8px'}}><EyeIcon /></button>
+                                        <button onClick={() => handleDelete(entry.id)} className="btn-icon-action text-red"><TrashIcon /></button>
+                                    </div></td>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                {entries.map(entry => (
-                                    <tr key={entry.id} className={entry.isFeatured ? 'featured-row' : ''}>
-                                        <td>
-                                            <div className="cell-flex">
-                                                <img src={entry.logoImage} className="table-img" alt=""/>
-                                                <strong>{entry.name}</strong>
-                                                {entry.isFeatured && <StarFilledIcon size={14} />}
-                                            </div>
-                                        </td>
-                                        <td>{entry.ownerName}</td>
-                                        <td>
-                                            <a href={`https://wa.me/51${entry.phone}`} target="_blank" className="table-link">
-                                                {entry.phone}
-                                            </a>
-                                        </td>
-                                        <td>{entry.prize}</td>
-                                        <td>{entry.value}</td>
-                                        <td><span className="badge-cat">{entry.category}</span></td>
-                                        <td>
-                                            <div className="action-buttons-row">
-                                                <button 
-                                                    onClick={() => handleToggleFeatured(entry.id, !!entry.isFeatured)} 
-                                                    className="btn-icon-action"
-                                                    title={entry.isFeatured ? "Quitar Destacado" : "Destacar Primero"}
-                                                    style={{color: entry.isFeatured ? '#f1c40f' : '#b2bec3'}}
-                                                >
-                                                    {entry.isFeatured ? <StarFilledIcon /> : <StarOutlineIcon />}
-                                                </button>
-                                                <button onClick={() => window.open(`/?card=${entry.id}`, '_blank')} className="btn-icon-action text-blue" title="Ver Tarjeta Digital">
-                                                    <QrIcon />
-                                                </button>
-                                                <button onClick={() => setEditingEnrolled(entry)} className="btn-icon-action text-blue" title="Editar Ficha">
-                                                    <EditIcon />
-                                                </button>
-                                                <button onClick={() => setViewEntry(entry)} className="btn-icon-action text-blue" style={{marginRight: '8px'}} title="Ver Detalle">
-                                                    <EyeIcon />
-                                                </button>
-                                                <button onClick={() => handleDelete(entry.id)} className="btn-icon-action text-red" title="Eliminar">
-                                                    <TrashIcon />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
+                            ))}</tbody>
                         </table>
-                    ) : (
+                    )}
+                    
+                    {activeTab === 'clients' && (
                         <table className="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Nombre</th>
-                                    <th>Negocio Indicado</th>
-                                    <th>Celular</th>
-                                    <th>Estado</th>
-                                    <th>Acción</th>
+                            <thead><tr><th>Fecha</th><th>Nombre</th><th>Celular</th><th>Ticket</th><th>Acciones</th></tr></thead>
+                            <tbody>{clients.map(client => (
+                                <tr key={client.id}>
+                                    <td>{new Date(client.created_at).toLocaleDateString()}</td>
+                                    <td><strong>{client.name}</strong></td>
+                                    <td>{client.phone}</td>
+                                    <td><span className="badge-cat" style={{background: '#d1fae5', color: '#065f46'}}>{client.ticket_code}</span></td>
+                                    <td>
+                                        <div className="action-buttons-row">
+                                             <a href={`https://wa.me/51${client.phone}`} target="_blank" className="btn-icon-action" style={{color: '#25D366', borderColor: '#25D366'}} title="Contactar por WhatsApp">
+                                                <WhatsAppIcon />
+                                            </a>
+                                            <button onClick={() => handleDeleteClient(client.id)} className="btn-icon-action text-red"><TrashIcon /></button>
+                                        </div>
+                                    </td>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                {pendingMembers.map(member => (
-                                    <tr key={member.id}>
-                                        <td>{member.name}</td>
-                                        <td>{member.business_name}</td>
-                                        <td>{member.phone}</td>
-                                        <td><span className="badge-cat" style={{background: '#ffeaa7', color: '#d35400'}}>Pendiente</span></td>
-                                        <td>
-                                            <div className="action-buttons-row">
-                                                <button 
-                                                    onClick={() => setEditingMember(member)} 
-                                                    className="btn-icon-action text-blue" 
-                                                    title="Editar Datos"
-                                                >
-                                                    <EditIcon />
-                                                </button>
-                                                <button 
-                                                    onClick={() => handleDeleteMember(member.id)} 
-                                                    className="btn-icon-action text-red" 
-                                                    title="Eliminar de la lista"
-                                                >
-                                                    <TrashIcon />
-                                                </button>
-                                                <a 
-                                                    href={`https://wa.me/51${member.phone}?text=Hola%20${member.name},%20vimos%20que%20te%20registraste%20en%20La%20Tribu%20pero%20falta%20terminar%20tu%20ficha%20con%20la%20foto%20del%20premio.%20¿Necesitas%20ayuda?`} 
-                                                    target="_blank" 
-                                                    className="btn-whatsapp-small"
-                                                    title="Enviar WhatsApp"
-                                                >
-                                                    <WhatsAppIcon />
-                                                </a>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                                {pendingMembers.length === 0 && (
-                                    <tr>
-                                        <td colSpan={5} style={{textAlign: 'center', padding: '30px', color: '#b2bec3'}}>
-                                            ¡Todo al día! No hay usuarios pendientes.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
+                            ))}</tbody>
+                        </table>
+                    )}
+
+                    {activeTab === 'pending' && (
+                        <table className="data-table">
+                            <thead><tr><th>Nombre</th><th>Negocio</th><th>Celular</th><th>Estado</th><th>Acción</th></tr></thead>
+                            <tbody>{pendingMembers.map(member => (
+                                <tr key={member.id}><td>{member.name}</td><td>{member.business_name}</td><td>{member.phone}</td>
+                                    <td><span className="badge-cat" style={{background: '#ffeaa7', color: '#d35400'}}>Pendiente</span></td>
+                                    <td><div className="action-buttons-row">
+                                        <button onClick={() => setEditingMember(member)} className="btn-icon-action text-blue"><EditIcon /></button>
+                                        <button onClick={() => handleDeleteMember(member.id)} className="btn-icon-action text-red"><TrashIcon /></button>
+                                        <a href={`https://wa.me/51${member.phone}`} target="_blank" className="btn-icon-action" style={{color: '#25D366'}}><WhatsAppIcon /></a>
+                                    </div></td>
+                                </tr>
+                            ))}</tbody>
                         </table>
                     )}
                 </div>
             </div>
-
-            {/* EDIT MEMBER MODAL (PENDING) */}
             {editingMember && (
                 <div className="modal-overlay">
                     <div className="modal-content" style={{maxWidth: '450px'}}>
                         <button className="close-btn" onClick={() => setEditingMember(null)}><XIcon /></button>
-                        <div className="modal-header">
-                            <h2>Editar Pre-registro</h2>
-                            <p>Corrige los datos del miembro pendiente.</p>
-                        </div>
+                        <div className="modal-header"><h2>Editar Pendiente</h2></div>
                         <form onSubmit={handleUpdateMember} className="clean-form">
-                            <div className="form-group">
-                                <label>Nombre</label>
-                                <input 
-                                    type="text" 
-                                    value={editingMember.name} 
-                                    onChange={(e) => setEditingMember({...editingMember, name: e.target.value})}
-                                    required 
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Negocio</label>
-                                <input 
-                                    type="text" 
-                                    value={editingMember.business_name} 
-                                    onChange={(e) => setEditingMember({...editingMember, business_name: e.target.value})}
-                                    required 
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Celular</label>
+                            <div className="form-group"><label>Nombre</label><input type="text" value={editingMember.name} onChange={(e) => setEditingMember({...editingMember, name: e.target.value})} required /></div>
+                            <div className="form-group"><label>Negocio</label><input type="text" value={editingMember.business_name} onChange={(e) => setEditingMember({...editingMember, business_name: e.target.value})} required /></div>
+                            <div className="form-group"><label>Celular</label>
                                 <input 
                                     type="tel" 
                                     value={editingMember.phone} 
-                                    onChange={(e) => setEditingMember({...editingMember, phone: e.target.value})}
+                                    onChange={(e) => {
+                                        const val = e.target.value.replace(/\D/g, '').slice(0, 9);
+                                        setEditingMember({...editingMember, phone: val});
+                                    }} 
+                                    maxLength={9}
+                                    placeholder="9..."
                                     required 
                                 />
                             </div>
-                            <div className="form-footer" style={{display: 'flex', gap: '10px', marginTop: '20px'}}>
-                                <button type="button" onClick={() => setEditingMember(null)} className="btn btn-outline btn-block">Cancelar</button>
-                                <button type="submit" className="btn btn-primary btn-block">Guardar Cambios</button>
-                            </div>
+                            <div className="form-footer"><button type="submit" className="btn btn-primary btn-block">Guardar</button></div>
                         </form>
                     </div>
                 </div>
             )}
-
-            {/* EDIT ENROLLED ENTREPRENEUR MODAL */}
-             {editingEnrolled && (
+            {editingEnrolled && (
                 <div className="modal-overlay">
                     <div className="modal-content" style={{maxWidth: '500px'}}>
                         <button className="close-btn" onClick={() => setEditingEnrolled(null)}><XIcon /></button>
-                        <div className="modal-header">
-                            <h2>Editar Ficha Inscrito</h2>
-                            <p>Modifica los datos públicos del emprendedor.</p>
-                        </div>
+                        <div className="modal-header"><h2>Editar Ficha</h2></div>
                         <form onSubmit={handleUpdateEnrolled} className="clean-form">
-                            <div className="form-row">
-                                <div className="form-group" style={{flex: 1}}>
-                                    <label>Negocio</label>
-                                    <input 
-                                        type="text" 
-                                        value={editingEnrolled.name} 
-                                        onChange={(e) => setEditingEnrolled({...editingEnrolled, name: e.target.value})}
-                                        required 
-                                    />
-                                </div>
-                                 <div className="form-group" style={{flex: 1}}>
-                                    <label>Dueño</label>
-                                    <input 
-                                        type="text" 
-                                        value={editingEnrolled.ownerName} 
-                                        onChange={(e) => setEditingEnrolled({...editingEnrolled, ownerName: e.target.value})}
-                                        required 
-                                    />
-                                </div>
+                             <div className="form-row">
+                                <div className="form-group" style={{flex: 1}}><label>Negocio</label><input type="text" value={editingEnrolled.name} onChange={(e) => setEditingEnrolled({...editingEnrolled, name: e.target.value})} required /></div>
+                                 <div className="form-group" style={{flex: 1}}><label>Dueño</label><input type="text" value={editingEnrolled.ownerName} onChange={(e) => setEditingEnrolled({...editingEnrolled, ownerName: e.target.value})} required /></div>
                             </div>
-
-                            <div className="form-group">
-                                <label>Rubro</label>
-                                <select 
-                                    value={PREDEFINED_CATEGORIES.includes(editingEnrolled.category) ? editingEnrolled.category : 'Otro'}
+                            <div className="form-group"><label>Rubro</label><select value={PREDEFINED_CATEGORIES.includes(editingEnrolled.category) ? editingEnrolled.category : 'Otro'} onChange={(e) => { if (e.target.value !== 'Otro') setEditingEnrolled({...editingEnrolled, category: e.target.value}); }} className="form-select">{PREDEFINED_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
+                            <div className="form-row">
+                                <div className="form-group" style={{flex: 2}}><label>Premio</label><input type="text" value={editingEnrolled.prize} onChange={(e) => setEditingEnrolled({...editingEnrolled, prize: e.target.value})} required /></div>
+                                 <div className="form-group" style={{flex: 1}}><label>Valor</label><input type="text" value={editingEnrolled.value} onChange={(e) => setEditingEnrolled({...editingEnrolled, value: e.target.value})} required /></div>
+                            </div>
+                             <div className="form-group"><label>Celular</label>
+                                <input 
+                                    type="tel" 
+                                    value={editingEnrolled.phone} 
                                     onChange={(e) => {
-                                        if (e.target.value !== 'Otro') {
-                                            setEditingEnrolled({...editingEnrolled, category: e.target.value});
-                                        }
-                                    }}
-                                    className="form-select"
-                                >
-                                    {PREDEFINED_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                                </select>
-                                {!PREDEFINED_CATEGORIES.includes(editingEnrolled.category) && (
-                                    <input 
-                                        type="text" 
-                                        className="input-custom-category"
-                                        value={editingEnrolled.category} 
-                                        onChange={(e) => setEditingEnrolled({...editingEnrolled, category: e.target.value})}
-                                    />
-                                )}
-                            </div>
-
-                            <div className="form-row">
-                                <div className="form-group" style={{flex: 2}}>
-                                    <label>Premio</label>
-                                    <input 
-                                        type="text" 
-                                        value={editingEnrolled.prize} 
-                                        onChange={(e) => setEditingEnrolled({...editingEnrolled, prize: e.target.value})}
-                                        required 
-                                    />
-                                </div>
-                                 <div className="form-group" style={{flex: 1}}>
-                                    <label>Valor (Moneda)</label>
-                                    <input 
-                                        type="text" 
-                                        value={editingEnrolled.value} 
-                                        onChange={(e) => setEditingEnrolled({...editingEnrolled, value: e.target.value})}
-                                        required 
-                                        placeholder="Ej: S/ 50.00"
-                                    />
-                                    <span className="input-helper">Usar S/ para Soles</span>
-                                </div>
-                            </div>
-                            
-                            <div className="form-group">
-                                <label>Descripción</label>
-                                <textarea 
-                                    value={editingEnrolled.description} 
-                                    onChange={(e) => setEditingEnrolled({...editingEnrolled, description: e.target.value})}
-                                    rows={2}
-                                    className="form-textarea"
+                                        const val = e.target.value.replace(/\D/g, '').slice(0, 9);
+                                        setEditingEnrolled({...editingEnrolled, phone: val});
+                                    }} 
+                                    maxLength={9}
+                                    placeholder="9..."
+                                    required 
                                 />
-                            </div>
-
-                            <div className="form-group">
-                                <label>Redes Sociales</label>
-                                <div className="social-grid">
-                                    <input type="text" placeholder="IG" value={editingEnrolled.instagram} onChange={(e) => setEditingEnrolled({...editingEnrolled, instagram: e.target.value})} />
-                                    <input type="text" placeholder="FB" value={editingEnrolled.facebook || ''} onChange={(e) => setEditingEnrolled({...editingEnrolled, facebook: e.target.value})} />
-                                    <input type="text" placeholder="TikTok" value={editingEnrolled.tiktok || ''} onChange={(e) => setEditingEnrolled({...editingEnrolled, tiktok: e.target.value})} />
-                                    <input type="text" placeholder="Web" value={editingEnrolled.website || ''} onChange={(e) => setEditingEnrolled({...editingEnrolled, website: e.target.value})} />
-                                </div>
-                            </div>
-
-                            <div className="form-footer" style={{display: 'flex', gap: '10px', marginTop: '20px'}}>
-                                <button type="button" onClick={() => setEditingEnrolled(null)} className="btn btn-outline btn-block">Cancelar</button>
-                                <button type="submit" className="btn btn-primary btn-block">Guardar Ficha</button>
-                            </div>
+                             </div>
+                             <div className="form-group"><label>Redes</label><div className="social-grid">
+                                <input type="text" placeholder="IG" value={editingEnrolled.instagram} onChange={(e) => setEditingEnrolled({...editingEnrolled, instagram: e.target.value})} />
+                                <input type="text" placeholder="FB" value={editingEnrolled.facebook || ''} onChange={(e) => setEditingEnrolled({...editingEnrolled, facebook: e.target.value})} />
+                             </div></div>
+                            <div className="form-footer"><button type="submit" className="btn btn-primary btn-block">Guardar Ficha</button></div>
                         </form>
                     </div>
                 </div>
             )}
-
-
-            {/* DETAIL MODAL */}
             {viewEntry && (
                 <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setViewEntry(null)}>
-                    <div className="modal-content" style={{maxWidth: '800px'}}>
+                    <div className="modal-content" style={{maxWidth: '600px'}}>
                         <button className="close-btn" onClick={() => setViewEntry(null)}><XIcon /></button>
-                        <div className="modal-header">
-                            <h2>Detalle de Inscripción</h2>
-                            <p>{viewEntry.date.toLocaleDateString()}</p>
-                        </div>
-                        <div className="detail-grid" style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px'}}>
-                            <div className="detail-left">
-                                <h3 style={{marginBottom: '16px', color: '#e1306c', fontSize: '1.2rem'}}>Datos del Negocio</h3>
-                                <div style={{display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px'}}>
-                                    <img src={viewEntry.logoImage} alt="logo" style={{width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #ddd'}}/>
-                                    <div>
-                                        <h4 style={{fontSize: '1.2rem', marginBottom: '4px'}}>{viewEntry.name}</h4>
-                                        <p style={{color: '#636e72', fontSize: '0.9rem'}}>{viewEntry.category}</p>
-                                    </div>
-                                </div>
-                                <div className="form-group">
-                                    <label>Dueño:</label> <span>{viewEntry.ownerName}</span>
-                                </div>
-                                <div className="form-group">
-                                    <label>Redes Sociales:</label> 
-                                    <div className="social-links-list">
-                                        {viewEntry.instagram && (
-                                            <a href={`https://instagram.com/${viewEntry.instagram.replace('@','')}`} target="_blank" className="social-link-item"><InstagramIcon /> {viewEntry.instagram}</a>
-                                        )}
-                                        {viewEntry.facebook && (
-                                             <a href={viewEntry.facebook} target="_blank" className="social-link-item"><FacebookIcon /> FB</a>
-                                        )}
-                                        {viewEntry.tiktok && (
-                                             <a href={viewEntry.tiktok} target="_blank" className="social-link-item"><TikTokIcon /> TikTok</a>
-                                        )}
-                                         {viewEntry.website && (
-                                             <a href={viewEntry.website} target="_blank" className="social-link-item"><GlobeIcon /> Web</a>
-                                        )}
-                                    </div>
-                                </div>
-                                <div className="form-group">
-                                    <label>WhatsApp:</label>
-                                    <a href={`https://wa.me/51${viewEntry.phone}`} target="_blank" style={{color: '#00b894', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px'}}>
-                                        <WhatsAppIcon /> {viewEntry.phone}
-                                    </a>
-                                </div>
-                                <div className="form-group">
-                                    <label>Descripción:</label>
-                                    <p style={{background: '#f5f6fa', padding: '10px', borderRadius: '8px', fontSize: '0.9rem'}}>{viewEntry.description}</p>
-                                </div>
+                        <div className="detail-grid" style={{display: 'flex', gap: '20px'}}>
+                            <div className="detail-left" style={{flex: 1}}>
+                                <h3>{viewEntry.name}</h3>
+                                <p>{viewEntry.description}</p>
+                                <p><strong>Dueño:</strong> {viewEntry.ownerName}</p>
+                                <p><strong>Contacto:</strong> {viewEntry.phone}</p>
                             </div>
-                            <div className="detail-right">
-                                <h3 style={{marginBottom: '16px', color: '#e1306c', fontSize: '1.2rem'}}>Datos del Premio</h3>
-                                <div style={{background: '#f5f6fa', padding: '16px', borderRadius: '12px', textAlign: 'center'}}>
-                                    <img src={viewEntry.prizeImage} alt="Premio" style={{width: '100%', maxHeight: '300px', objectFit: 'contain', borderRadius: '8px', marginBottom: '16px'}}/>
-                                    <h4 style={{fontSize: '1.1rem', marginBottom: '8px'}}>{viewEntry.prize}</h4>
-                                    <span style={{background: '#2d3436', color: 'white', padding: '6px 12px', borderRadius: '4px', fontWeight: 'bold'}}>{viewEntry.value}</span>
-                                </div>
-                                <button onClick={() => handleDelete(viewEntry.id)} className="btn btn-outline btn-block mt-medium" style={{color: '#d63031', borderColor: '#d63031'}}>
-                                    <TrashIcon /> Eliminar Publicación
-                                </button>
+                            <div className="detail-right" style={{flex: 1}}>
+                                <img src={viewEntry.prizeImage} style={{width: '100%', borderRadius: '8px'}} />
+                                <p><strong>Premio:</strong> {viewEntry.prize}</p>
+                                <p><strong>Valor:</strong> {viewEntry.value}</p>
                             </div>
                         </div>
                     </div>
@@ -966,51 +881,60 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
     );
 }
 
-// PRE-REGISTRATION COMPONENT (FOR GROUP SHARING)
+// ... [PreRegisterForm]
 function PreRegisterForm({ onBack }: { onBack: () => void }) {
-    const [isUnlocked, setIsUnlocked] = useState(false);
-    const [accessCode, setAccessCode] = useState('');
+    // Removed 'lock' step - Entry is now public "portal style"
+    const [wizardStep, setWizardStep] = useState<'member' | 'business' | 'success'>('member');
     
-    const [name, setName] = useState('');
-    const [business, setBusiness] = useState('');
-    const [phone, setPhone] = useState('');
-    const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+    // Member Data (Step 1)
+    const [memberName, setMemberName] = useState('');
+    const [memberBusiness, setMemberBusiness] = useState('');
+    const [memberPhone, setMemberPhone] = useState('');
+
+    // Business Data (Step 2)
+    const [logoFile, setLogoFile] = useState<File | null>(null);
+    const [logoPreview, setLogoPreview] = useState<string | null>(null);
+    const [category, setCategory] = useState(PREDEFINED_CATEGORIES[0]);
+    const [customCategory, setCustomCategory] = useState('');
+    const [instagram, setInstagram] = useState('');
+    const [facebook, setFacebook] = useState('');
+    const [tiktok, setTiktok] = useState('');
+    const [website, setWebsite] = useState('');
+    const [description, setDescription] = useState('');
+    const [isAiLoading, setIsAiLoading] = useState(false);
+
+    // Prize Data (Step 2)
+    const [prize, setPrize] = useState('');
+    const [value, setValue] = useState('');
+    const [prizeFile, setPrizeFile] = useState<File | null>(null);
+    const [prizePreview, setPrizePreview] = useState<string | null>(null);
+    const [acceptedTerms, setAcceptedTerms] = useState(false);
+
+    const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
     const [errorMsg, setErrorMsg] = useState('');
+    const logoInputRef = useRef<HTMLInputElement>(null);
+    const prizeInputRef = useRef<HTMLInputElement>(null);
 
-    const handleUnlock = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (accessCode.trim().toUpperCase() === SECRET_ACCESS_CODE) {
-            setIsUnlocked(true);
-        } else {
-            alert('Código incorrecto. Solicítalo en el grupo de WhatsApp.');
-        }
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleMemberSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setStatus('loading');
+        setErrorMsg('');
         
         try {
-            // Clean phone
-            const cleanPhone = phone.replace(/\D/g, '');
-            if (cleanPhone.length < 9) {
-                throw new Error("El teléfono debe tener al menos 9 dígitos");
+            // Validate Phone
+            if (memberPhone.length !== 9 || !memberPhone.startsWith('9')) {
+                throw new Error("El teléfono debe ser un celular válido de Perú (9 dígitos, empieza con 9)");
             }
-
-            const { error } = await supabase
-                .from('members')
-                .insert([{
-                    name: name,
-                    business_name: business,
-                    phone: cleanPhone
-                }]);
-
-            if (error) {
-                if(error.code === '23505') throw new Error("Este número ya está registrado.");
-                throw error;
-            }
-
-            setStatus('success');
+            
+            // Upsert member
+            const { error } = await supabase.from('members').upsert([{ 
+                phone: memberPhone, name: memberName, business_name: memberBusiness 
+            }], { onConflict: 'phone' });
+            
+            if (error) throw error;
+            
+            setStatus('idle');
+            setWizardStep('business');
         } catch (err: any) {
             console.error(err);
             setStatus('error');
@@ -1018,44 +942,93 @@ function PreRegisterForm({ onBack }: { onBack: () => void }) {
         }
     };
 
-    // LOCK SCREEN
-    if (!isUnlocked) {
-        return (
-            <div className="container" style={{paddingTop: '120px', minHeight: '80vh', display: 'flex', justifyContent: 'center'}}>
-                <div className="card p-40" style={{maxWidth: '400px', width: '100%', textAlign: 'center'}}>
-                    <div style={{color: '#e1306c', marginBottom: '20px'}}><LockIcon /></div>
-                    <h2 style={{marginBottom: '10px'}}>Acceso Restringido</h2>
-                    <p className="text-gray mb-medium">Esta zona es exclusiva para miembros del grupo.</p>
-                    <form onSubmit={handleUnlock}>
-                        <input 
-                            type="password" 
-                            className="lock-input" 
-                            placeholder="Ingresa la clave del grupo"
-                            value={accessCode}
-                            onChange={(e) => setAccessCode(e.target.value)}
-                            autoFocus
-                        />
-                        <button className="btn btn-dark btn-block mt-small">Desbloquear</button>
-                    </form>
-                    <button onClick={onBack} className="btn-link mt-medium">Volver al Inicio</button>
-                </div>
-            </div>
-        );
-    }
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'prize') => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            const url = URL.createObjectURL(file);
+            if (type === 'logo') { setLogoFile(file); setLogoPreview(url); }
+            else { setPrizeFile(file); setPrizePreview(url); }
+        }
+    };
 
-    if (status === 'success') {
+    const improveDescriptionWithAI = async () => {
+        if (!description || description.length < 5) {
+            alert('Escribe al menos una idea básica de tu negocio primero.');
+            return;
+        }
+        setIsAiLoading(true);
+        try {
+            // Using local init to prevent global crash
+            const ai = getAiModel();
+            if (!ai) {
+                alert("La IA no está disponible en este momento (Falta API Key).");
+                return;
+            }
+            
+            const model = ai.models.generateContent({ model: 'gemini-2.5-flash', contents: `Actúa como un experto en copywriting y marketing para emprendedores.
+            Reescribe la siguiente descripción de un negocio para que sea más atractiva, persuasiva, corta (máximo 2 frases) y profesional. 
+            Descripción original: "${description}"` });
+            
+            const response = await model;
+            const text = response.text;
+            
+            if (text) {
+                setDescription(text.trim());
+            }
+        } catch (error) {
+            console.error("Error AI:", error);
+            alert("Hubo un error al conectar con la IA. Inténtalo de nuevo.");
+        } finally {
+            setIsAiLoading(false);
+        }
+    };
+
+    const handleBusinessSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!acceptedTerms) { alert("Debes aceptar los términos."); return; }
+        if (category === 'Otro' && !customCategory) { alert("Especifíca el rubro."); return; }
+        if (!prizeFile) { alert("Falta la foto del premio."); return; }
+
+        setStatus('loading');
+        
+        try {
+            let logoUrl = 'https://via.placeholder.com/150';
+            let prizeUrl = '';
+            if (logoFile) logoUrl = await uploadToStorage(logoFile);
+            prizeUrl = await uploadToStorage(prizeFile);
+
+            const finalCategory = category === 'Otro' ? customCategory : category;
+            let formattedValue = value;
+            if (!formattedValue.toUpperCase().includes('S/')) formattedValue = `S/ ${formattedValue.replace('$', '')}`;
+            const formattedInsta = instagram.startsWith('@') ? instagram : (instagram ? `@${instagram}` : '');
+
+            const { error } = await supabase.from('entrepreneurs').insert([{
+                business_name: memberBusiness, owner_name: memberName, phone: memberPhone,
+                prize: prize, prize_value: formattedValue, prize_image_url: prizeUrl,
+                logo_image_url: logoUrl, instagram: formattedInsta, facebook, tiktok, website,
+                description: description || 'Emprendedor de la tribu', category: finalCategory
+            }]);
+
+            if (error) throw error;
+            setWizardStep('success');
+            setStatus('idle');
+        } catch (err: any) {
+            console.error(err);
+            setStatus('error');
+            setErrorMsg(err.message || "Error al guardar ficha.");
+        }
+    };
+
+    // SUCCESS SCREEN
+    if (wizardStep === 'success') {
         return (
             <div className="container" style={{paddingTop: '120px', minHeight: '80vh'}}>
                 <div className="success-message card p-40">
                     <CheckCircleIcon />
-                    <h2 className="mt-medium">¡Registro Exitoso!</h2>
-                    <p>Tu número ha sido habilitado en la lista.</p>
-                    <div className="note-box" style={{background: '#e3f2fd', color: '#0984e3', marginTop: '20px'}}>
-                        <p style={{fontWeight: 'bold', fontSize: '1.2rem', marginBottom: '10px'}}>PASO 2: OBLIGATORIO</p>
-                        <p>Ahora debes regresar a la página principal y llenar la ficha de inscripción con los datos de tu premio.</p>
-                    </div>
+                    <h2 className="mt-medium">¡Inscripción Completa!</h2>
+                    <p>Tu negocio y tu premio ya están publicados en el sorteo.</p>
                     <button onClick={() => window.location.href = window.location.origin} className="btn btn-primary btn-large mt-medium">
-                        Ir a Inscribir mi Negocio
+                        Ir a ver mi Publicación
                     </button>
                 </div>
             </div>
@@ -1063,61 +1036,416 @@ function PreRegisterForm({ onBack }: { onBack: () => void }) {
     }
 
     return (
-        <div className="container" style={{paddingTop: '120px', minHeight: '80vh', maxWidth: '600px'}}>
-             <div className="card p-40">
-                 <div className="text-center mb-medium">
-                    <div className="badge-secure"><LockIcon /> Zona Segura</div>
-                    <h2>Pre-Registro Tribu</h2>
-                    <p className="text-gray">Formulario interno para habilitar tu acceso al sistema del sorteo.</p>
-                 </div>
+        <div style={{background: '#f8fafc', minHeight: '100vh', paddingTop: '100px', paddingBottom: '80px'}}>
+             <div className="container" style={{maxWidth: '800px'}}>
                  
-                 <form onSubmit={handleSubmit} className="clean-form">
-                     <div className="form-group">
-                         <label>Tu Nombre Completo</label>
-                         <input type="text" value={name} onChange={e => setName(e.target.value)} required placeholder="Ej. Juan Pérez" />
-                     </div>
-                     <div className="form-group">
-                         <label>Nombre de tu Negocio</label>
-                         <input type="text" value={business} onChange={e => setBusiness(e.target.value)} required placeholder="Ej. Mi Tienda SAC" />
-                     </div>
-                     <div className="form-group">
-                         <label>Número de Celular</label>
-                         <div className="input-with-icon">
-                             <span className="input-icon"><PhoneIcon /></span>
-                             <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} required placeholder="Ej. 999123456" />
-                         </div>
-                         <p className="hint-text">Este será tu llave de acceso para participar en el sorteo.</p>
-                     </div>
-                     
-                     {status === 'error' && <p className="error-text mb-medium">{errorMsg}</p>}
-                     
-                     <button className="btn btn-primary btn-block btn-large" disabled={status === 'loading'}>
-                         {status === 'loading' ? 'Registrando...' : 'Registrarme en la Lista'}
-                     </button>
-                     
-                     <button type="button" onClick={onBack} className="btn btn-outline btn-block mt-small">
-                         Cancelar / Volver
-                     </button>
-                 </form>
+                 {/* PORTAL HEADER */}
+                 <div className="portal-header text-center mb-medium">
+                     <button onClick={onBack} className="btn-link-back">← Volver al inicio</button>
+                     <div className="portal-icon-float"><RocketIcon /></div>
+                     <h1 className="portal-title">Portal de Emprendedores</h1>
+                     <p className="portal-subtitle">Únete a la comunidad, destaca tu marca y participa en la gran dinámica de premios.</p>
+                 </div>
+
+                 <div className="card p-40 shadow-xl border-t-brand">
+                     {/* WIZARD STEPS INDICATOR */}
+                     <div className="steps-visual" style={{marginBottom: '40px'}}>
+                        <div className={`step-item ${wizardStep === 'member' ? 'active' : 'completed'}`}>
+                            <div className="step-num">1</div>
+                            <p>Tus Datos</p>
+                        </div>
+                        <div className="step-line"></div>
+                        <div className={`step-item ${wizardStep === 'business' ? 'active' : ''}`}>
+                             <div className="step-num">2</div>
+                            <p>Tu Negocio</p>
+                        </div>
+                    </div>
+
+                     {wizardStep === 'member' && (
+                         <form onSubmit={handleMemberSubmit} className="clean-form">
+                             <div className="form-group-large">
+                                 <label>Tu Nombre Completo</label>
+                                 <input type="text" value={memberName} onChange={e => setMemberName(e.target.value)} required placeholder="Ej. Juan Pérez" autoFocus />
+                             </div>
+                             
+                             <div className="form-group-large">
+                                 <label>Nombre de tu Negocio</label>
+                                 <div className="input-with-icon">
+                                     <span className="input-icon"><BriefcaseIcon /></span>
+                                     <input type="text" value={memberBusiness} onChange={e => setMemberBusiness(e.target.value)} required placeholder="Ej. Mi Tienda SAC" />
+                                 </div>
+                             </div>
+
+                             <div className="form-group-large">
+                                 <label>Número de WhatsApp (Contacto)</label>
+                                 <div className="input-with-icon">
+                                     <span className="input-icon"><WhatsAppIcon /></span>
+                                     <input 
+                                        type="tel" 
+                                        value={memberPhone} 
+                                        onChange={(e) => {
+                                            const val = e.target.value.replace(/\D/g, '').slice(0, 9);
+                                            setMemberPhone(val);
+                                        }}
+                                        maxLength={9}
+                                        required 
+                                        placeholder="Ej. 999123456" 
+                                     />
+                                 </div>
+                                 <p className="input-hint">Te contactaremos por aquí si ganas.</p>
+                             </div>
+
+                             {status === 'error' && <p className="error-text mb-medium">{errorMsg}</p>}
+                             
+                             <button className="btn btn-primary btn-block btn-giant-form" disabled={status === 'loading'}>
+                                 {status === 'loading' ? 'Guardando...' : 'Comenzar Registro →'}
+                             </button>
+                         </form>
+                     )}
+
+                     {wizardStep === 'business' && (
+                         <form onSubmit={handleBusinessSubmit} className="clean-form">
+                            <div className="grid-2-col">
+                                <div className="form-group">
+                                    <label>Logo de tu Marca</label>
+                                    <label className="upload-box-modern">
+                                        {logoPreview ? <img src={logoPreview} className="upload-preview-img" /> : <div className="upload-placeholder-content"><ImageIcon /><span className="upload-text">Subir Logo</span></div>}
+                                        <input type="file" ref={logoInputRef} onChange={(e) => handleImageChange(e, 'logo')} className="hidden" accept="image/*"/>
+                                    </label>
+                                </div>
+                                <div className="form-group">
+                                    <label>Rubro / Categoría</label>
+                                    <select value={category} onChange={(e) => { setCategory(e.target.value); if(e.target.value !== 'Otro') setCustomCategory(''); }} className="form-select-large">
+                                        {PREDEFINED_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                    </select>
+                                    {category === 'Otro' && <input type="text" className="input-custom-category mt-2" placeholder="Especifica tu rubro..." value={customCategory} onChange={(e) => setCustomCategory(e.target.value)} required />}
+                                </div>
+                            </div>
+
+                            <div className="form-group mt-medium"><label>Redes Sociales (Opcional)</label>
+                                <div className="social-inputs-grid">
+                                    <div className="input-with-icon social"><span className="input-icon instagram"><InstagramIcon /></span><input type="text" placeholder="@usuario" value={instagram} onChange={(e) => setInstagram(e.target.value)} /></div>
+                                    <div className="input-with-icon social"><span className="input-icon facebook"><FacebookIcon /></span><input type="text" placeholder="Facebook URL" value={facebook} onChange={(e) => setFacebook(e.target.value)} /></div>
+                                    <div className="input-with-icon social"><span className="input-icon tiktok"><TikTokIcon /></span><input type="text" placeholder="TikTok URL" value={tiktok} onChange={(e) => setTiktok(e.target.value)} /></div>
+                                    <div className="input-with-icon social"><span className="input-icon website"><GlobeIcon /></span><input type="text" placeholder="www.tuweb.com" value={website} onChange={(e) => setWebsite(e.target.value)} /></div>
+                                </div>
+                            </div>
+                            
+                            <div className="form-group ai-section">
+                                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
+                                    <label style={{marginBottom: 0}}>Descripción del Negocio</label>
+                                    <button type="button" onClick={improveDescriptionWithAI} disabled={isAiLoading} className="btn-ai-magic-glow">
+                                        {isAiLoading ? <LoaderIcon /> : <SparkleIcon />} {isAiLoading ? 'Redactando...' : 'Mejorar con IA'}
+                                    </button>
+                                </div>
+                                <textarea rows={3} placeholder="Cuéntanos brevemente qué vendes o qué servicio ofreces..." value={description} onChange={(e) => setDescription(e.target.value)} className="form-textarea-large" required />
+                            </div>
+
+                            <div className="separator-line"></div>
+                            <div className="form-section-label"><span className="section-icon"><GiftIcon /></span><h3>Tu Aporte (Premio)</h3></div>
+                            
+                            <div className="grid-2-col">
+                                <div className="form-group"><label>¿Qué vas a sortear?</label><input type="text" value={prize} onChange={(e) => setPrize(e.target.value)} required placeholder="Ej. Vale de consumo, Producto X..." className="input-large" /></div>
+                                <div className="form-group"><label>Valor Aprox. (S/)</label><input type="text" value={value} onChange={(e) => setValue(e.target.value)} required placeholder="Ej. 50.00" className="input-large" /></div>
+                            </div>
+
+                            <div className="form-group">
+                                <label>Foto del Premio (Importante)</label>
+                                <label className="upload-box-wide">
+                                    {prizePreview ? <div className="preview-wide"><img src={prizePreview} /></div> : <div className="upload-placeholder-content"><ImageIcon /><span className="upload-text">Subir Foto Atractiva del Premio</span></div>}
+                                    <input type="file" accept="image/*" ref={prizeInputRef} onChange={(e) => handleImageChange(e, 'prize')} className="hidden" />
+                                </label>
+                            </div>
+
+                            <div className="terms-checkbox-styled">
+                                <label>
+                                    <input type="checkbox" checked={acceptedTerms} onChange={(e) => setAcceptedTerms(e.target.checked)} />
+                                    <span className="checkbox-custom"></span>
+                                    <span className="label-text">Me comprometo a entregar este premio al ganador del sorteo.</span>
+                                </label>
+                            </div>
+                            
+                            {status === 'error' && <p className="error-text mb-medium">{errorMsg}</p>}
+                            <button type="submit" className="btn btn-primary btn-block btn-giant-form" disabled={status === 'loading'}>
+                                 {status === 'loading' ? <span style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px'}}><LoaderIcon /> Publicando...</span> : 'Finalizar y Publicar'}
+                            </button>
+                         </form>
+                     )}
+                 </div>
              </div>
         </div>
     );
 }
 
+// ... [ClientRegistrationModal UPDATED]
+function ClientRegistrationModal({ onClose, onGoToDirectory }: { onClose: () => void, onGoToDirectory: () => void }) {
+    const [step, setStep] = useState<'form' | 'mission' | 'ticket'>('form');
+    const [name, setName] = useState('');
+    const [phone, setPhone] = useState('');
+    const [ticketCode, setTicketCode] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const [randomBrands, setRandomBrands] = useState<Entrepreneur[]>([]);
+    // Removed isDownloading as per request to remove sharing features that caused errors
+    const ticketRef = useRef<HTMLDivElement>(null);
+    
+    // NEW: Track which brands have been clicked
+    const [clickedBrands, setClickedBrands] = useState<Set<string>>(new Set());
+
+    const fetchRandomBrands = async () => {
+        // Fetch 3 random brands to follow
+        const { data } = await supabase.from('entrepreneurs').select('*').limit(3);
+        if (data) {
+             const mapped: Entrepreneur[] = data.map(item => ({
+                  id: item.id,
+                  name: item.business_name,
+                  ownerName: item.owner_name,
+                  phone: item.phone,
+                  prize: item.prize,
+                  value: item.prize_value,
+                  prizeImage: item.prize_image_url || 'https://via.placeholder.com/600',
+                  logoImage: item.logo_image_url || 'https://via.placeholder.com/150',
+                  date: new Date(item.created_at),
+                  instagram: item.instagram,
+                  description: item.description,
+                  category: item.category
+              }));
+             setRandomBrands(mapped);
+        }
+    };
+
+    const handleFormSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        
+        // STRICT PERUVIAN PHONE VALIDATION
+        if (phone.length !== 9 || !phone.startsWith('9')) {
+            alert('Por favor, ingresa un número de celular válido de Perú (9 dígitos, empieza con 9).');
+            return;
+        }
+
+        setIsLoading(true);
+        // Simulate check
+        setTimeout(() => {
+            setIsLoading(false);
+            fetchRandomBrands();
+            setStep('mission');
+        }, 800);
+    };
+
+    // NEW: Handle Brand Click to Track it
+    const handleBrandClick = (brandId: string, instagramHandle: string) => {
+        const url = `https://instagram.com/${instagramHandle.replace('@','')}`;
+        window.open(url, '_blank');
+        
+        // Add to set
+        setClickedBrands(prev => {
+            const newSet = new Set(prev);
+            newSet.add(brandId);
+            return newSet;
+        });
+    };
+
+    const handleGenerateTicket = async () => {
+        setIsLoading(true);
+        try {
+            const code = `#TRIBU-${Math.floor(1000 + Math.random() * 9000)}`;
+            
+            const cleanPhone = phone.replace(/\D/g, '');
+
+            const { error } = await supabase.from('clients').insert([{
+                name: name,
+                phone: cleanPhone,
+                ticket_code: code
+            }]);
+
+            if (error) throw error;
+
+            setTicketCode(code);
+            setStep('ticket');
+        } catch (err) {
+            console.error(err);
+            alert('Error al generar ticket. Inténtalo de nuevo.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Check if all displayed brands have been clicked
+    const allBrandsClicked = randomBrands.length > 0 && clickedBrands.size >= randomBrands.length;
+    const progressPercentage = randomBrands.length > 0 ? (clickedBrands.size / randomBrands.length) * 100 : 0;
+
+    return (
+        <div className="modal-overlay">
+            {/* IMPROVED MODAL CONTENT */}
+            <div className={`modal-content-modern ${step === 'ticket' ? 'wide-modal' : ''}`}>
+                <button className="close-btn-modern" onClick={onClose}><XIcon /></button>
+                
+                {step === 'form' && (
+                    <div className="text-center">
+                        <div className="modal-decorative-header">
+                            <div className="floating-icon-top"><GiftIcon /></div>
+                        </div>
+                        <div className="modal-body-p40">
+                            <h3 className="modal-modern-subtitle">¡YA ESTÁS CERCA!</h3>
+                            <h2 className="modal-modern-title">¡Reclama tu Ticket Gratis!</h2>
+                            <p className="modal-modern-desc">Solo faltan tus datos para imprimir tu ticket y entrar al sorteo.</p>
+                            
+                            <form onSubmit={handleFormSubmit} className="clean-form mt-medium">
+                                <div className="form-group-modern">
+                                    <label>Tu Nombre Completo</label>
+                                    <div className="input-modern-wrapper">
+                                        <UserIcon />
+                                        <input type="text" value={name} onChange={e => setName(e.target.value)} required placeholder="Ej. María García" />
+                                    </div>
+                                </div>
+                                <div className="form-group-modern">
+                                    <label>Tu WhatsApp (Para avisarte si ganas)</label>
+                                    <div className="input-modern-wrapper">
+                                        <span className="country-prefix"><WhatsAppIcon /> +51</span>
+                                        <div className="prefix-divider"></div>
+                                        <input 
+                                            type="tel" 
+                                            value={phone} 
+                                            onChange={(e) => {
+                                                // STRICT INPUT MASKING: Numbers only, max 9 chars
+                                                const val = e.target.value.replace(/\D/g, '').slice(0, 9);
+                                                setPhone(val);
+                                            }}
+                                            maxLength={9}
+                                            required 
+                                            placeholder="999 123 456" 
+                                        />
+                                    </div>
+                                </div>
+                                <button className="btn btn-primary btn-block btn-glowing mt-medium" disabled={isLoading}>
+                                    {isLoading ? 'Procesando...' : '¡QUIERO MI TICKET!'}
+                                </button>
+                                <p className="privacy-note mt-small"><LockIcon /> Tus datos están 100% seguros. No spam.</p>
+                            </form>
+                        </div>
+                    </div>
+                )}
+
+                {step === 'mission' && (
+                    <div className="text-center">
+                        <div className="modal-header-mission">
+                            <h2 className="text-gradient">🎯 Misión Requerida</h2>
+                            <p className="text-gray-sm">Sigue a estas marcas para desbloquear tu ticket.</p>
+                            
+                            {/* PROGRESS BAR */}
+                            <div className="mission-progress-track">
+                                <div className="mission-progress-fill" style={{width: `${progressPercentage}%`}}></div>
+                            </div>
+                            <div className="mission-progress-label">
+                                {clickedBrands.size} de {randomBrands.length} completadas
+                            </div>
+                        </div>
+                        
+                        <div className="mission-list-container">
+                            {randomBrands.map((brand) => {
+                                const isClicked = clickedBrands.has(brand.id);
+                                return (
+                                    <div key={brand.id} className={`mission-brand-card ${isClicked ? 'completed' : ''}`}>
+                                        <div className="mission-card-left">
+                                            <img src={brand.logoImage} alt="logo" className="mission-brand-logo" />
+                                            <div className="mission-brand-details">
+                                                <div className="mission-brand-name">{brand.name}</div>
+                                                <div className="mission-brand-handle">{brand.instagram}</div>
+                                            </div>
+                                        </div>
+                                        <div className="mission-card-right">
+                                            <button 
+                                                className={`btn-mission-follow ${isClicked ? 'done' : ''}`}
+                                                onClick={() => handleBrandClick(brand.id, brand.instagram)}
+                                            >
+                                                {isClicked ? '¡Listo!' : 'Seguir'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                            {randomBrands.length === 0 && <div className="p-20 text-gray"><LoaderIcon /> Cargando marcas...</div>}
+                        </div>
+
+                        <div className="mission-footer-action">
+                            {/* WARNING NOTICE */}
+                            <div className="warning-box-clean">
+                                ⚠️ Verificaremos que sigas a las cuentas si ganas.
+                            </div>
+
+                            <button 
+                                onClick={handleGenerateTicket} 
+                                className={`btn-giant-action ${allBrandsClicked ? 'unlocked' : 'locked'}`}
+                                disabled={isLoading || !allBrandsClicked}
+                            >
+                                {isLoading ? <LoaderIcon /> : (allBrandsClicked ? '✨ ¡GENERAR MI TICKET! ✨' : 'Completa las misiones arriba...')}
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {step === 'ticket' && (
+                    <div className="ticket-view-container">
+                        <ConfettiBackground />
+                        
+                        <h2 className="text-center mb-small text-gradient">🎉 ¡ESTÁS DENTRO! 🎉</h2>
+                        <p className="text-center mb-medium text-gray">Este es tu pase oficial para el sorteo.</p>
+                        
+                        <div className="ticket-wrapper-centered">
+                            {/* TICKET VISUAL - DOWNLOAD TARGET */}
+                            <div className="golden-ticket-visual" ref={ticketRef}>
+                                <div className="ticket-stub-left">
+                                    <div className="ticket-brand-header">LA TRIBU</div>
+                                    <div className="ticket-event-name">GRAN SORTEO</div>
+                                    <div className="ticket-user-info">
+                                        <div className="ticket-label">PARTICIPANTE</div>
+                                        <div className="ticket-value-lg">{name}</div>
+                                    </div>
+                                    <div className="ticket-validity">
+                                        <CheckCircleIcon />
+                                        <span>VERIFICADO</span>
+                                    </div>
+                                </div>
+                                <div className="ticket-rip-line">
+                                    <div className="rip-circle-top"></div>
+                                    <div className="rip-dash"></div>
+                                    <div className="rip-circle-bottom"></div>
+                                </div>
+                                <div className="ticket-stub-right">
+                                    <div className="ticket-number-label">N° BOLETO</div>
+                                    <div className="ticket-code-glitch">{ticketCode}</div>
+                                    <div className="ticket-qr-fake">
+                                        <QrIcon />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="ticket-actions mt-medium">
+                            <p className="text-center text-sm text-gray">Haz una captura de pantalla para guardar tu ticket.</p>
+                            <button onClick={onGoToDirectory} className="btn btn-ghost-action btn-block mt-small">
+                                Explorar Directorio <ArrowRightIcon />
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
 
 function App() {
   // Navigation State
   const [viewMode, setViewMode] = useState<'landing' | 'preregister' | 'admin' | 'card'>('landing');
   const [cardId, setCardId] = useState<string>('');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // App Data
   const [entries, setEntries] = useState<Entrepreneur[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
   // Modal State
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  // Steps: guide -> validation -> form -> preview -> success
-  const [modalStep, setModalStep] = useState<'guide' | 'validation' | 'form' | 'preview' | 'success'>('guide');
+  const [isClientModalOpen, setIsClientModalOpen] = useState(false); // Client Modal
+  const [isLedgerOpen, setIsLedgerOpen] = useState(false); // Public Ledger Modal
   
   const [isDirectoryOpen, setIsDirectoryOpen] = useState(false);
   const [isPromoOpen, setIsPromoOpen] = useState(false);
@@ -1125,39 +1453,32 @@ function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('Todas');
   
-  // Validation State
-  const [validationPhone, setValidationPhone] = useState('');
-  const [validationError, setValidationError] = useState('');
-  const [isValidating, setIsValidating] = useState(false);
+  // Prize Gallery State
+  const [showAllGallery, setShowAllGallery] = useState(false);
+  
+  // Animation Refs
+  const directoryRef = useRef<HTMLDivElement>(null);
+  const [isDirVisible, setIsDirVisible] = useState(false);
+  
+  // Flyer Ref - Removed isCapturing state as sharing feature is removed
+  const flyerRef = useRef<HTMLDivElement>(null);
 
-  // Form State
-  const [businessName, setBusinessName] = useState('');
-  const [ownerName, setOwnerName] = useState('');
-  const [prize, setPrize] = useState('');
-  const [value, setValue] = useState('');
-  const [instagram, setInstagram] = useState('');
-  const [facebook, setFacebook] = useState('');
-  const [tiktok, setTiktok] = useState('');
-  const [website, setWebsite] = useState('');
-  const [description, setDescription] = useState('');
-  const [formCategory, setFormCategory] = useState(PREDEFINED_CATEGORIES[0]);
-  const [customCategory, setCustomCategory] = useState('');
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
-  
-  // Images
-  const [selectedPrizeImage, setSelectedPrizeImage] = useState<string | null>(null);
-  const [prizeImageFile, setPrizeImageFile] = useState<File | null>(null);
-  const [selectedLogoImage, setSelectedLogoImage] = useState<string | null>(null);
-  const [logoImageFile, setLogoImageFile] = useState<File | null>(null);
-  
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submittedCategory, setSubmittedCategory] = useState('');
-  
   // Admin Backdoor
   const [secretClicks, setSecretClicks] = useState(0);
-  
-  const prizeInputRef = useRef<HTMLInputElement>(null);
-  const logoInputRef = useRef<HTMLInputElement>(null);
+
+  // --- MISSING FUNCTIONS DEFINED HERE ---
+  const scrollToSection = (id: string) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+    setMobileMenuOpen(false); // Close menu on click
+  };
+
+  const closePromo = () => {
+    setIsPromoOpen(false);
+  };
+  // --------------------------------------
 
   useEffect(() => {
     fetchEntries();
@@ -1182,6 +1503,15 @@ function App() {
     };
     window.addEventListener('scroll', handleScroll);
     
+    // Intersection Observer for Animation
+    const observer = new IntersectionObserver(([entry]) => {
+        if (entry.isIntersecting) setIsDirVisible(true);
+    }, { threshold: 0.2 });
+    
+    if (directoryRef.current) {
+        observer.observe(directoryRef.current);
+    }
+    
     const timer = setTimeout(() => {
         if (viewMode === 'landing') setIsPromoOpen(true);
     }, 1500);
@@ -1189,6 +1519,7 @@ function App() {
     return () => {
         window.removeEventListener('scroll', handleScroll);
         clearTimeout(timer);
+        if (directoryRef.current) observer.unobserve(directoryRef.current);
     }
   }, [viewMode]);
 
@@ -1196,7 +1527,7 @@ function App() {
       setSecretClicks(prev => {
           const newCount = prev + 1;
           if (newCount >= 5) {
-              setViewMode('preregister');
+              setViewMode('admin');
               return 0;
           }
           return newCount;
@@ -1241,21 +1572,20 @@ function App() {
       }
   };
 
-  const openModal = () => {
-    setIsModalOpen(true);
-    setModalStep('guide'); // Start with the guide
-    setValidationPhone('');
-    setValidationError('');
-    document.body.style.overflow = 'hidden';
-  };
+  const openClientModal = () => {
+      setIsClientModalOpen(true);
+      setMobileMenuOpen(false);
+      document.body.style.overflow = 'hidden';
+  }
 
-  const closeModal = () => {
-      setIsModalOpen(false);
+  const closeClientModal = () => {
+      setIsClientModalOpen(false);
       document.body.style.overflow = 'auto';
-  };
+  }
 
   const openDirectory = () => {
       setIsDirectoryOpen(true);
+      setMobileMenuOpen(false);
       document.body.style.overflow = 'hidden';
   };
 
@@ -1278,184 +1608,6 @@ function App() {
       
       navigator.clipboard.writeText(shareText);
       alert('¡Lista copiada! Lista para pegar en WhatsApp.');
-  };
-
-  const closePromo = () => {
-      setIsPromoOpen(false);
-  };
-
-  // VALIDATION LOGIC
-  const handleValidationSubmit = async (e: React.FormEvent) => {
-      e.preventDefault();
-      setIsValidating(true);
-      setValidationError('');
-      
-      const cleanPhone = validationPhone.replace(/\D/g, ''); 
-      
-      try {
-        const { data, error } = await supabase
-            .from('members')
-            .select('*')
-            .eq('phone', cleanPhone)
-            .single();
-
-        if (data) {
-            setValidationPhone(cleanPhone); // Update state to clean number for consistency
-            setOwnerName(data.name || '');
-            if (data.business_name) setBusinessName(data.business_name);
-            setModalStep('form');
-        } else {
-            setValidationError('NOT_FOUND');
-        }
-      } catch (err) {
-          console.error(err);
-          setValidationError('Error de conexión. Inténtalo de nuevo.');
-      } finally {
-          setIsValidating(false);
-      }
-  };
-
-  const handlePrizeImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setPrizeImageFile(file);
-      const imageUrl = URL.createObjectURL(file);
-      setSelectedPrizeImage(imageUrl);
-    }
-  };
-
-  const handleLogoImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setLogoImageFile(file);
-      const imageUrl = URL.createObjectURL(file);
-      setSelectedLogoImage(imageUrl);
-    }
-  };
-
-  const uploadImageToSupabase = async (file: File) => {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `${fileName}`;
-      
-      const { error: uploadError } = await supabase.storage
-        .from('images')
-        .upload(filePath, file);
-
-      if (uploadError) {
-          throw uploadError;
-      }
-
-      const { data } = supabase.storage.from('images').getPublicUrl(filePath);
-      return data.publicUrl;
-  }
-
-  // Handle "Next" click (to preview)
-  const handlePreview = (e: React.FormEvent) => {
-      e.preventDefault();
-      if (!businessName || !prize || !value) return;
-
-      if (!acceptedTerms) {
-          alert('Debes aceptar los términos y condiciones para participar.');
-          return;
-      }
-
-      if (formCategory === 'Otro' && !customCategory.trim()) {
-          alert('Por favor especifica tu rubro.');
-          return;
-      }
-      
-      // Basic image check
-      if (!selectedPrizeImage) {
-          alert('Por favor sube una imagen del premio.');
-          return;
-      }
-
-      setModalStep('preview');
-  };
-
-  const handleFinalSubmit = async () => {
-    setIsSubmitting(true);
-    
-    try {
-        let finalPrizeImageUrl = 'https://images.unsplash.com/photo-1513885535751-8b9238bd345a?w=600&auto=format&fit=crop&q=60';
-        let finalLogoImageUrl = 'https://via.placeholder.com/150?text=Logo';
-        
-        if (prizeImageFile) {
-            finalPrizeImageUrl = await uploadImageToSupabase(prizeImageFile);
-        }
-        if (logoImageFile) {
-            finalLogoImageUrl = await uploadImageToSupabase(logoImageFile);
-        }
-
-        const formattedInsta = instagram.startsWith('@') ? instagram : (instagram ? `@${instagram}` : '');
-        const finalCategory = formCategory === 'Otro' ? customCategory.trim() : formCategory;
-        
-        // Force currency symbol for Soles
-        let formattedValue = value;
-        if (!formattedValue.toUpperCase().includes('S/')) {
-            formattedValue = `S/ ${formattedValue.replace('$', '')}`;
-        }
-
-        const { error: insertError } = await supabase
-            .from('entrepreneurs')
-            .insert([
-                {
-                    business_name: businessName,
-                    owner_name: ownerName,
-                    phone: validationPhone, // Already clean
-                    prize: prize,
-                    prize_value: formattedValue,
-                    prize_image_url: finalPrizeImageUrl,
-                    logo_image_url: finalLogoImageUrl,
-                    instagram: formattedInsta,
-                    facebook: facebook,
-                    tiktok: tiktok,
-                    website: website,
-                    description: description || 'Emprendedor de la tribu.',
-                    category: finalCategory
-                }
-            ]);
-
-        if (insertError) throw insertError;
-
-        setSubmittedCategory(finalCategory);
-        setModalStep('success');
-        
-        fetchEntries();
-        
-        setTimeout(() => {
-            setBusinessName('');
-            setOwnerName('');
-            setPrize('');
-            setValue('');
-            setInstagram('');
-            setFacebook('');
-            setTiktok('');
-            setWebsite('');
-            setDescription('');
-            setFormCategory(PREDEFINED_CATEGORIES[0]);
-            setCustomCategory('');
-            setSelectedPrizeImage(null);
-            setPrizeImageFile(null);
-            setSelectedLogoImage(null);
-            setLogoImageFile(null);
-            setAcceptedTerms(false);
-            if (prizeInputRef.current) prizeInputRef.current.value = '';
-            if (logoInputRef.current) logoInputRef.current.value = '';
-        }, 500);
-
-    } catch (err) {
-        console.error("Error submitting entry:", err);
-        alert('Hubo un error al guardar. Verifica tu conexión.');
-    } finally {
-        setIsSubmitting(false);
-    }
-  };
-
-  const scrollToSection = (id: string) => {
-    const el = document.getElementById(id);
-    if (el) el.scrollIntoView({ behavior: 'smooth' });
   };
 
   const filteredEntries = entries.filter(e => {
@@ -1491,80 +1643,116 @@ function App() {
       {/* Navbar */}
       <nav className={`navbar ${scrolled ? 'navbar-scrolled' : ''}`}>
         <div className="nav-inner">
-            <div className="brand" onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})}>
+            <div className="brand" onClick={() => { window.scrollTo({top: 0, behavior: 'smooth'}); setMobileMenuOpen(false); }}>
                 <div className="brand-icon"><GiftIcon /></div>
                 <span>SorteoTribu</span>
             </div>
+            
+            {/* Desktop Actions */}
             <div className="nav-actions">
-                {/* BUTTON REMOVED FOR SECURITY - Only accessible via secret link */}
+                <button onClick={() => setIsLedgerOpen(true)} className="nav-link" style={{display: 'flex', alignItems: 'center', gap: '5px'}}>
+                    <ListIcon /> Lista Oficial
+                </button>
                 <button onClick={() => scrollToSection('gallery')} className="nav-link">Premios</button>
-                <button onClick={() => scrollToSection('benefits')} className="nav-link">Beneficios</button>
                 <button onClick={openDirectory} className="nav-link">Directorio</button>
-                <button onClick={openModal} className="btn btn-primary">
-                  Súmate Ahora
+                <button onClick={openClientModal} className="btn btn-primary">
+                  Participar Gratis
                 </button>
             </div>
+
+            {/* Mobile Toggle Button */}
+            <button className="mobile-menu-btn" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+                {mobileMenuOpen ? <XIcon /> : <MenuIcon />}
+            </button>
         </div>
       </nav>
 
+      {/* MOBILE MENU OVERLAY */}
+      {mobileMenuOpen && (
+          <div className="mobile-menu-overlay open">
+              <div className="mobile-menu-content">
+                  <button onClick={() => { setIsLedgerOpen(true); setMobileMenuOpen(false); }} className="mobile-menu-link">
+                      <ListIcon /> Lista Oficial de Inscritos
+                  </button>
+                  <button onClick={() => scrollToSection('gallery')} className="mobile-menu-link">
+                      <GiftIcon /> Ver Premios
+                  </button>
+                  <button onClick={openDirectory} className="mobile-menu-link">
+                      <BookIcon /> Directorio Completo
+                  </button>
+                  <div style={{height: '20px'}}></div>
+                  <button onClick={openClientModal} className="btn btn-giant" style={{width: '100%', fontSize: '1.2rem', padding: '16px'}}>
+                      ¡Participar Gratis!
+                  </button>
+              </div>
+          </div>
+      )}
+
       {/* Hero */}
       <section className="hero-section">
+        <ConfettiBackground />
         <div className="container">
           <div className="hero-grid">
             <div className="hero-text">
+                <div style={{display: 'inline-block', marginBottom: '24px'}}>
+                    <span className="power-statement">
+                        <StarFilledIcon size={14} /> ¡La Fiesta del Emprendimiento!
+                    </span>
+                </div>
                 <h1 className="hero-title">
-                  Crece junto <br/> a la <span className="text-gradient">Tribu</span>
+                  ¡GANA PREMIOS <span className="word-highlight-animated">GRATIS</span> <br/> <span className="text-gradient">PARA TU NEGOCIO!</span>
                 </h1>
                 
                 <div className="hero-subtitle-container">
-                    <span className="hero-lead">Cada emprendedor aporta un premio.<br/>El público participa gratis.</span>
-                    <span className="power-statement">
-                        Más premios <span className="highlight">=</span> Más alcance
+                    <span className="hero-lead highlight">Un evento único donde la comunidad premia a la comunidad.</span>
+                    <span className="hero-lead text-dark">
+                        Únete GRATIS y gana premios de nuestros emprendedores.
                     </span>
                 </div>
 
                 <div className="hero-buttons">
-                    <button onClick={openModal} className="btn btn-large btn-primary">
-                        Unirme al Sorteo
+                    <button onClick={openClientModal} className="btn btn-giant">
+                        <GiftIcon /> QUIERO MI PREMIO
                     </button>
-                    <button onClick={() => scrollToSection('gallery')} className="btn btn-large btn-outline">
-                        Ver Premios
-                    </button>
+                </div>
+
+                <div className="hero-im-badge mt-medium floating delay-1">
+                    <span className="im-logo-small">iM</span>
+                    <span>Iniciativa de <strong>InfoMercado Tribu</strong></span>
                 </div>
             </div>
             
             <div className="hero-visual">
                <div className="stat-card floating">
                   <span className="stat-value">{entries.length}</span>
-                  <span className="stat-label">Emprendedores</span>
+                  <span className="stat-label">Premios Disponibles</span>
                </div>
                <div className="stat-card floating delay-1">
-                  <span className="stat-value">{entries.length * 500}+</span>
-                  <span className="stat-label">Personas Alcanzadas</span>
+                  <span className="stat-value">S/ {entries.reduce((acc, curr) => acc + (parseFloat(curr.value.replace(/[^0-9.]/g, '')) || 0), 0).toFixed(0)}</span>
+                  <span className="stat-label">En Premios</span>
                </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Gallery Section */}
-      <section id="gallery" className="section">
+      {/* Prize Grid Section */}
+      <section id="gallery" className="prize-marquee-section">
         <div className="container">
-            <div className="section-head">
-                <h2 className="section-title">Galería de Premios</h2>
-                <p className="section-desc">Descubre lo que están aportando otros emprendedores.</p>
+            <div className="section-head text-center mb-medium">
+                <h2 className="section-title">🎁 Premios Confirmados</h2>
+                <p className="section-desc">Regalos increíbles de la comunidad para la comunidad.</p>
             </div>
-            
+        
             {isLoading ? (
-                <div className="empty-box">
+                <div className="empty-box text-center">
                     <div className="spinner-large" style={{margin: '0 auto 20px'}}><LoaderIcon /></div>
                     <p>Cargando premios...</p>
                 </div>
             ) : entries.length > 0 ? (
-                <div className="masonry-grid">
-                {entries.map((entry) => (
-                    <div key={entry.id} className="masonry-item">
-                        <div className="artwork-card">
+                <div className="prize-static-grid">
+                    {entries.slice(0, showAllGallery ? undefined : 6).map((entry) => (
+                         <div key={entry.id} className="artwork-card">
                             <div className="image-wrapper">
                                 <img src={entry.prizeImage} alt={entry.prize} />
                                 <span className="category-badge-overlay">{entry.category}</span>
@@ -1573,699 +1761,309 @@ function App() {
                             <div className="artwork-info">
                                 <div className="artwork-header">
                                   <h4>{entry.name}</h4>
-                                  <span className="price-badge">{entry.value}</span>
                                 </div>
                                 <p className="artwork-prize">{entry.prize}</p>
-                                <div className="artwork-footer">
-                                    <span className="artwork-insta">{entry.instagram}</span>
-                                </div>
+                                <span className="price-sticker">{entry.value}</span>
                             </div>
                         </div>
-                    </div>
-                ))}
+                    ))}
                 </div>
             ) : (
-                <div className="empty-box">
+                <div className="empty-box text-center">
                     <div className="icon-placeholder"><ImageIcon /></div>
-                    <h3>Aún no hay flyers</h3>
-                    <p>Sé el primero en sumarte a la dinámica</p>
-                    <button onClick={openModal} className="btn btn-primary mt-small">
-                        Subir mi Flyer
+                    <h3>Aún no hay premios cargados</h3>
+                    <p>¡Avísale a tu emprendedor favorito para que se sume!</p>
+                </div>
+            )}
+            
+            {entries.length > 6 && (
+                <div className="w-full text-center mt-medium">
+                    <button 
+                        onClick={() => setShowAllGallery(!showAllGallery)} 
+                        className="btn btn-outline"
+                        style={{ borderRadius: 'var(--radius-full)', padding: '12px 32px' }}
+                    >
+                        {showAllGallery ? (
+                            <>Ver menos premios <span style={{marginLeft: '8px', display: 'inline-block', transform: 'rotate(180deg)'}}>▼</span></>
+                        ) : (
+                            <>Ver más premios <span style={{marginLeft: '8px'}}>▼</span></>
+                        )}
                     </button>
                 </div>
             )}
         </div>
-      </section>
+    </section>
 
-      {/* Strategy/Benefits Section */}
-      <section id="benefits" className="section bg-light">
+      {/* Directory Teaser Section - UPDATED CLOUD LAYOUT (ALL LOGOS) */}
+      <section id="directory" className="aliados-section" ref={directoryRef}>
         <div className="container">
-            <div className="section-head">
-                <h2 className="section-title">¿Por qué unirte?</h2>
-                <p className="section-desc">Una estrategia colaborativa donde todos ganamos.</p>
-            </div>
-            
-            <div className="grid-3">
-                <div className="feature-card">
-                    <div className="card-icon"><UsersIcon /></div>
-                    <h3>Comunidad Activa</h3>
-                    <p>Network real y apoyo mutuo para generar tracción inicial.</p>
-                </div>
-                <div className="feature-card">
-                    <div className="card-icon"><MegaphoneIcon /></div>
-                    <h3>Visibilidad Masiva</h3>
-                    <p>Tu marca será etiquetada en múltiples perfiles, alcanzando nuevos clientes.</p>
-                </div>
-                <div className="feature-card">
-                    <div className="card-icon"><TrendingUpIcon /></div>
-                    <h3>Más Ventas</h3>
-                    <p>El respaldo de la tribu aumenta tu credibilidad y confianza.</p>
-                </div>
-            </div>
-        </div>
-      </section>
-
-      {/* Directory Teaser Section */}
-      <section id="directory" className="section">
-        <div className="container">
-             <div className="directory-teaser">
-                 <div className="teaser-content">
-                    <h2 className="section-title">Directorio de Aliados</h2>
-                    <p>
-                        Explora los perfiles de todos los emprendedores participantes, 
-                        conoce su historia y contáctalos directamente.
+             <div className="aliados-container">
+                 {/* Left Text */}
+                 <div className="aliados-text animate-on-scroll">
+                    <div className="badge-pink">
+                        ● COMUNIDAD VERIFICADA
+                    </div>
+                    <h2 className="aliados-title">
+                        <span style={{color: '#8e44ad'}}>NUESTROS</span> <span style={{color: '#f39c12'}}>ALIADOS</span>
+                    </h2>
+                    <p className="aliados-desc">
+                        Conoce a los emprendedores que hacen posible este evento. 
+                        <strong> Compra local</strong>, apoya a la tribu.
                     </p>
-                    <button onClick={openDirectory} className="btn btn-primary btn-large btn-with-icon">
-                        <BookIcon /> Explorar Directorio Completo
+                    <button onClick={openDirectory} className="btn-aliados-cta">
+                        <BookIcon /> Ver Directorio Completo
                     </button>
                  </div>
-                 <div className="teaser-visual">
-                    {entries.length > 0 ? (
-                        <div className="avatar-stack">
-                            {entries.slice(0, 4).map((entry, index) => (
-                                <img 
+                 
+                 {/* Right Grid (Cloud Layout) */}
+                 <div className="aliados-grid-wrapper animate-on-scroll">
+                     <div className="aliados-grid">
+                        {entries.length > 0 ? (
+                             entries.map((entry, index) => (
+                                <div 
                                     key={entry.id} 
-                                    src={entry.logoImage || entry.prizeImage} 
-                                    alt={entry.name} 
-                                    style={{ zIndex: 5 - index, left: `${index * 30}px` }}
-                                />
-                            ))}
-                            <div className="avatar-count" style={{ left: `${Math.min(entries.length, 4) * 30}px` }}>
-                                +{entries.length}
-                            </div>
-                        </div>
-                    ) : (
-                         <div className="empty-stack-placeholder">
-                             <span>Únete para aparecer aquí</span>
-                         </div>
-                    )}
+                                    className="aliado-logo-card floating" 
+                                    style={{
+                                        animationDelay: `${(index % 5) * 0.5}s`, // Improved random feel
+                                        animationDuration: `${4 + (index % 4)}s` // Varied speed
+                                    }}
+                                    title={entry.name}
+                                >
+                                    <img src={entry.logoImage || entry.prizeImage} alt={entry.name} />
+                                </div>
+                             ))
+                        ) : (
+                            [...Array(6)].map((_, i) => (
+                                <div key={i} className="aliado-logo-card floating"><img src={`https://via.placeholder.com/100?text=${i+1}`} alt="placeholder" /></div>
+                            ))
+                        )}
+                     </div>
                  </div>
              </div>
         </div>
       </section>
 
-      <footer className="footer-minimal">
-        <div className="container">
-            <div className="footer-row">
-                <div className="brand">
-                    <span>SorteoTribu</span>
-                </div>
-                <div className="organizer-info">
-                    <span>Iniciativa de la comunidad de</span>
-                    <a href="https://infomercado.pe/tribu/" target="_blank" rel="noopener noreferrer">
-                        InfoMercado Tribu
-                    </a>
-                </div>
+      {/* NEW GRADIENT FOOTER WITH TRANSPARENCY LIST BUTTON */}
+      <footer className="footer-bar-gradient">
+        <div className="footer-bar-content">
+            <div className="footer-im-logo">iM</div>
+            <div className="footer-text-main" onDoubleClick={handleSecretClick} onClick={handleSecretClick} style={{cursor: 'pointer'}}>
+                Iniciativa de la comunidad de <strong>INFOMERCADO TRIBU</strong>
             </div>
-            <div className="footer-copyright" onDoubleClick={handleSecretClick} onClick={handleSecretClick} style={{userSelect: 'none', cursor: 'pointer'}}>
-                <p>© {new Date().getFullYear()} Juntos somos más fuertes.</p>
+            
+            <div style={{display: 'flex', gap: '12px'}}>
+                <button onClick={() => setIsLedgerOpen(true)} className="footer-btn-know-more" style={{background: 'rgba(0,0,0,0.2)'}}>
+                    <ListIcon /> Lista Oficial
+                </button>
+                <a href="https://infomercado.pe/tribu/" target="_blank" rel="noopener noreferrer" className="footer-btn-know-more">
+                    Conocer más <ArrowRightIcon />
+                </a>
             </div>
         </div>
       </footer>
 
-      {/* PROMO POPUP FLYER */}
+      {/* PROMO POPUP FLYER - DOWNLOADABLE & REDESIGNED FOR HIGH CONVERSION */}
       {isPromoOpen && (
           <div className="promo-overlay">
-              <div className="promo-card">
-                  <button className="promo-close" onClick={closePromo}><XIcon /></button>
-                  <div className="promo-content">
-                      <div className="promo-icon"><StarIcon /></div>
-                      <h2>¡La Tribu se une!</h2>
-                      <div className="promo-stats">
-                          <div className="promo-stat-item">
-                              <span className="val">{entries.length > 0 ? entries.length : '10+'}</span>
-                              <span className="lbl">Marcas</span>
+              <div className="promo-card-wrapper" style={{maxWidth: '450px', width: '100%', position: 'relative'}}>
+                  
+                  {/* CLOSE BUTTON */}
+                  <button className="promo-close-btn-floating" onClick={closePromo}><XIcon /></button>
+
+                  {/* CAPTURABLE AREA */}
+                  <div 
+                    ref={flyerRef} 
+                    className="promo-card-story"
+                  >
+                      {/* Decorative Circles */}
+                      <div style={{position: 'absolute', top: '-10%', left: '-10%', width: '150px', height: '150px', background: 'rgba(255,255,255,0.1)', borderRadius: '50%'}}></div>
+                      <div style={{position: 'absolute', bottom: '10%', right: '-5%', width: '100px', height: '100px', background: 'rgba(255,255,255,0.1)', borderRadius: '50%'}}></div>
+                      <ConfettiBackground />
+
+                      <div style={{position: 'relative', zIndex: 10, width: '100%'}}>
+                          {/* PILL HEADER */}
+                          <div className="promo-header-pill">
+                              🔥 TIEMPO LIMITADO
                           </div>
-                          <div className="promo-separator"></div>
-                          <div className="promo-stat-item">
-                              <span className="val">20K+</span>
-                              <span className="lbl">Alcance</span>
+
+                          {/* MAIN TITLE */}
+                          <div className="text-center">
+                              <h2 className="promo-main-title" style={{color: 'white', opacity: 0.95}}>¡RECLAMA TU</h2>
+                              <span className="promo-highlight-text">REGALO!</span>
+                              <h3 className="promo-sub-title">PARA TU NEGOCIO</h3>
+                          </div>
+
+                          {/* PRIZE BOX - STICKER STYLE */}
+                          <div className="promo-prize-container">
+                              <div className="promo-badge-float">¡GRATIS!</div>
+                              <div className="promo-stat-label">HAY MÁS DE</div>
+                              <div className="promo-stat-big">{entries.length || '33'}</div>
+                              <div className="promo-stat-label" style={{color: '#e1306c', fontWeight: 900, fontSize: '1rem'}}>PREMIOS DISPONIBLES</div>
+                          </div>
+
+                          {/* FOOTER BADGE */}
+                          <div className="promo-footer-badge">
+                              <div className="promo-badge-icon">iM</div>
+                              <span>Avalado por <strong>InfoMercado Tribu</strong></span>
                           </div>
                       </div>
-                      <p className="promo-text">El mayor sorteo colaborativo del año ha comenzado. Únete ahora para multiplicar tu visibilidad.</p>
-                      <div className="promo-actions">
-                          <button onClick={() => { closePromo(); openModal(); }} className="btn btn-primary btn-block">
-                              Participar como Emprendedor
-                          </button>
-                          <button onClick={() => { closePromo(); scrollToSection('gallery'); }} className="btn btn-outline btn-block mt-small">
-                              Ver los Premios
-                          </button>
-                      </div>
+                  </div>
+
+                  {/* ACTION BUTTONS (Outside capture area) */}
+                  <div style={{marginTop: '25px', display: 'flex', flexDirection: 'column', gap: '12px'}}>
+                      <button 
+                        onClick={() => { closePromo(); openClientModal(); }} 
+                        className="btn-promo-action" 
+                      >
+                          ¡QUIERO MI TICKET YA! 🎟️
+                      </button>
                   </div>
               </div>
           </div>
       )}
 
-      {/* FULL SCREEN DIRECTORY OVERLAY */}
+      {/* PUBLIC LEDGER MODAL */}
+      {isLedgerOpen && <PublicLedgerModal onClose={() => setIsLedgerOpen(false)} />}
+
+      {/* CLIENT REGISTRATION MODAL */}
+      {isClientModalOpen && (
+          <ClientRegistrationModal 
+            onClose={closeClientModal} 
+            onGoToDirectory={() => {
+                closeClientModal();
+                openDirectory();
+            }}
+          />
+      )}
+
+      {/* DIRECTORY OVERLAY */}
       {isDirectoryOpen && (
           <div className="directory-full-overlay">
-              <div className="directory-header">
-                  <div className="container">
-                    <div className="dh-row-top">
-                        <div className="dh-title">
-                            <h2>Directorio de la Tribu</h2>
-                            <span className="badge-count">{filteredEntries.length} Marcas</span>
-                        </div>
-                        <button className="close-directory-btn" onClick={closeDirectory}>
-                            <XIcon /> <span>Cerrar</span>
-                        </button>
-                    </div>
-                    
-                    {/* Share Actions */}
-                    <div className="share-actions-row">
-                        <button onClick={handleCopyLink} className="share-btn-item">
-                            <ShareIcon /> Copiar Enlace
-                        </button>
-                        <button onClick={handleShareWhatsAppList} className="share-btn-item whatsapp-share">
-                            <CopyIcon /> Generar Lista WhatsApp
-                        </button>
-                    </div>
-                    
-                    <div className="search-bar expanded mt-medium">
-                        <SearchIcon />
-                        <input 
-                            type="text" 
-                            placeholder="Buscar por nombre, usuario o descripción..." 
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            autoFocus
-                        />
-                    </div>
-                    
-                    {/* Category Filter Bar */}
-                    <div className="filter-bar">
-                        {filterCategories.map(cat => (
-                            <button 
-                                key={cat}
-                                className={`filter-pill ${selectedCategoryFilter === cat ? 'active' : ''}`}
-                                onClick={() => setSelectedCategoryFilter(cat)}
-                            >
-                                {cat}
-                            </button>
-                        ))}
-                    </div>
-                  </div>
-              </div>
+              <button className="close-directory-absolute" onClick={closeDirectory}><XIcon /></button>
+              
+              <div className="directory-split-container">
+                  {/* LEFT SIDEBAR (Sticky) */}
+                  <div className="directory-sidebar animate-slide-in">
+                      <div className="sidebar-header-group">
+                          <div className="badge-pulse">
+                              <span className="pulse-dot"></span>
+                              <span>Directorio en Vivo</span>
+                          </div>
+                          <h2 className="text-gradient">Directorio de la Tribu</h2>
+                          <p className="text-gray">{filteredEntries.length} Marcas aliadas</p>
+                      </div>
 
-              <div className="directory-body container">
-                 {isLoading ? (
-                     <div className="text-center p-10">Cargando directorio...</div>
-                 ) : (
-                     <div className="bio-grid">
-                        {filteredEntries.map(entry => (
-                            <div key={entry.id} className="bio-card">
-                                <div className="bio-header">
-                                    <img src={entry.logoImage || entry.prizeImage} alt={entry.name} className="bio-avatar" />
-                                    <div>
-                                        <h3>{entry.name}</h3>
-                                        <div className="flex-col">
-                                            <span className="owner-name-small">{entry.ownerName}</span>
+                      <div className="search-bar-modern mt-medium">
+                          <SearchIcon />
+                          <input 
+                              type="text" 
+                              placeholder="Buscar marcas..." 
+                              value={searchTerm}
+                              onChange={(e) => setSearchTerm(e.target.value)}
+                              autoFocus
+                          />
+                      </div>
+
+                      <div className="filters-vertical mt-medium">
+                          <span className="filter-label">Categorías</span>
+                          <div className="filter-chips-wrap">
+                            {filterCategories.map(cat => (
+                                <button 
+                                    key={cat}
+                                    className={`filter-chip ${selectedCategoryFilter === cat ? 'active' : ''}`}
+                                    onClick={() => setSelectedCategoryFilter(cat)}
+                                >
+                                    {cat}
+                                </button>
+                            ))}
+                          </div>
+                      </div>
+
+                      <div className="sidebar-footer mt-auto">
+                          <div className="share-actions-column">
+                              <button onClick={handleCopyLink} className="btn btn-outline btn-block btn-with-icon">
+                                  <ShareIcon /> Copiar Enlace
+                              </button>
+                              <button onClick={handleShareWhatsAppList} className="btn btn-primary btn-block btn-with-icon">
+                                  <WhatsAppIcon /> Compartir en WhatsApp
+                              </button>
+                          </div>
+                      </div>
+                  </div>
+
+                  {/* RIGHT CONTENT (Scrollable Grid) */}
+                  <div className="directory-main-content">
+                    {isLoading ? (
+                        <div className="text-center p-40">Cargando directorio...</div>
+                    ) : (
+                        <div className="bio-grid">
+                            {filteredEntries.map((entry, index) => (
+                                <div 
+                                    key={entry.id} 
+                                    className="bio-card animate-fade-up"
+                                    style={{animationDelay: `${index * 0.05}s`}} 
+                                >
+                                    <div className="bio-header">
+                                        <img src={entry.logoImage || entry.prizeImage} alt={entry.name} className="bio-avatar" />
+                                        <div>
+                                            <h3>{entry.name}</h3>
                                             <span className="category-tag"><TagIcon /> {entry.category}</span>
                                         </div>
                                     </div>
+                                    <div className="bio-content">
+                                        <p>{entry.description}</p>
+                                    </div>
+                                    
+                                    <div className="bio-footer-socials">
+                                         {entry.instagram && (
+                                             <button className="social-icon-btn insta" onClick={() => window.open(`https://instagram.com/${entry.instagram.replace('@','')}`, '_blank')} title="Instagram">
+                                                 <InstagramIcon />
+                                             </button>
+                                         )}
+                                         {entry.facebook && (
+                                             <button className="social-icon-btn fb" onClick={() => window.open(entry.facebook, '_blank')} title="Facebook">
+                                                 <FacebookIcon />
+                                             </button>
+                                         )}
+                                         {entry.tiktok && (
+                                             <button className="social-icon-btn tiktok" onClick={() => window.open(entry.tiktok, '_blank')} title="TikTok">
+                                                 <TikTokIcon />
+                                             </button>
+                                         )}
+                                         {entry.website && (
+                                             <button className="social-icon-btn web" onClick={() => window.open(entry.website, '_blank')} title="Sitio Web">
+                                                 <GlobeIcon />
+                                             </button>
+                                         )}
+                                    </div>
+                                    
+                                    <div className="action-buttons-row">
+                                        <button className="btn-block action-btn whatsapp" onClick={() => window.open(`https://wa.me/51${entry.phone}`, '_blank')}>
+                                            <WhatsAppIcon /> Contactar
+                                        </button>
+                                        <button 
+                                            className="btn-icon-action" 
+                                            onClick={() => window.open(`/?card=${entry.id}`, '_blank')}
+                                            title="Ver Tarjeta Digital"
+                                        >
+                                            <QrIcon />
+                                        </button>
+                                    </div>
                                 </div>
-                                <div className="bio-content">
-                                    <p>{entry.description}</p>
-                                </div>
-                                <div className="bio-footer-socials">
-                                     {entry.instagram && (
-                                         <button className="social-icon-btn insta" onClick={() => window.open(`https://instagram.com/${entry.instagram.replace('@','')}`, '_blank')} title="Instagram">
-                                             <InstagramIcon />
-                                         </button>
-                                     )}
-                                     {entry.facebook && (
-                                         <button className="social-icon-btn fb" onClick={() => window.open(entry.facebook, '_blank')} title="Facebook">
-                                             <FacebookIcon />
-                                         </button>
-                                     )}
-                                     {entry.tiktok && (
-                                         <button className="social-icon-btn tiktok" onClick={() => window.open(entry.tiktok, '_blank')} title="TikTok">
-                                             <TikTokIcon />
-                                         </button>
-                                     )}
-                                     {entry.website && (
-                                         <button className="social-icon-btn web" onClick={() => window.open(entry.website, '_blank')} title="Sitio Web">
-                                             <GlobeIcon />
-                                         </button>
-                                     )}
-                                </div>
-                                <div className="action-buttons-row" style={{display: 'flex', gap: '8px'}}>
-                                    <button className="btn-block action-btn whatsapp" onClick={() => window.open(`https://wa.me/51${entry.phone}`, '_blank')} style={{flex: 3}}>
-                                        <WhatsAppIcon /> WhatsApp
-                                    </button>
-                                    <button 
-                                        className="btn-icon-action" 
-                                        onClick={() => window.open(`/?card=${entry.id}`, '_blank')}
-                                        style={{flex: 1, border: '1px solid #dfe6e9', height: 'auto'}}
-                                        title="Ver Tarjeta Digital"
-                                    >
-                                        <QrIcon />
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
-                        {filteredEntries.length === 0 && (
-                            <div className="no-results">
-                                <p>No se encontraron resultados para "{searchTerm}" en la categoría "{selectedCategoryFilter}"</p>
-                                <button className="btn btn-outline" onClick={() => {
-                                    setSearchTerm('');
-                                    setSelectedCategoryFilter('Todas');
-                                }}>
-                                    Ver todos
-                                </button>
-                            </div>
-                        )}
-                     </div>
-                 )}
-              </div>
-          </div>
-      )}
-
-      {/* MODAL WIZARD */}
-      {isModalOpen && (
-        <div className="modal-overlay" onClick={(e) => {
-            if(e.target === e.currentTarget && !isSubmitting) closeModal();
-        }}>
-          <div className="modal-content">
-            {!isSubmitting && (
-                <button className="close-btn" onClick={closeModal}>
-                <XIcon />
-                </button>
-            )}
-            
-            {/* STEP 0: GUIDE (ONBOARDING) */}
-            {modalStep === 'guide' && (
-                <div className="guide-step">
-                    <div className="modal-header">
-                        <h2>¡Bienvenido a la Tribu!</h2>
-                        <p>Antes de empezar, asegúrate de tener lo siguiente:</p>
-                    </div>
-                    <div className="steps-visual">
-                        <div className="step-item">
-                            <div className="step-num">1</div>
-                            <div className="step-icon-bg"><PhoneIcon /></div>
-                            <p>Celular Registrado</p>
-                        </div>
-                        <div className="step-line"></div>
-                        <div className="step-item">
-                            <div className="step-num">2</div>
-                            <div className="step-icon-bg"><ImageIcon /></div>
-                            <p>Logo del Negocio</p>
-                        </div>
-                        <div className="step-line"></div>
-                        <div className="step-item">
-                            <div className="step-num">3</div>
-                            <div className="step-icon-bg"><GiftIcon /></div>
-                            <p>Foto del Premio</p>
-                        </div>
-                    </div>
-                    <div className="guide-footer">
-                        <button className="btn btn-primary btn-block btn-large" onClick={() => setModalStep('validation')}>
-                            ¡Tengo todo listo!
-                        </button>
-                        <p className="hint-text mt-small">Si no estás registrado, solicita el link de acceso en el grupo de WhatsApp de la Tribu.</p>
-                    </div>
-                </div>
-            )}
-
-            {/* STEP 1: SUCCESS */}
-            {modalStep === 'success' && (
-              <div className="success-message">
-                <div className="icon-success">
-                    <CheckCircleIcon />
-                </div>
-                <h2>¡Estás dentro!</h2>
-                <p>Tu perfil de <strong>{submittedCategory}</strong> ha sido creado y ya participas en el sorteo.</p>
-                <div className="note-box">
-                    <p><strong>Siguiente paso:</strong></p>
-                    <p>Tu flyer aparecerá en la galería. Jean te contactará al {validationPhone} para coordinar.</p>
-                </div>
-                <button className="btn btn-dark btn-block" onClick={closeModal}>
-                    Entendido
-                </button>
-              </div>
-            )}
-
-            {/* STEP 2: VALIDATION */}
-            {modalStep === 'validation' && (
-                <div className="validation-step">
-                    <div className="modal-header">
-                        <h2>Acceso Exclusivo</h2>
-                        <p>Ingresa tu número registrado en La Tribu para continuar.</p>
-                    </div>
-                    <form onSubmit={handleValidationSubmit} className="clean-form">
-                        <div className="form-group">
-                            <label htmlFor="validationPhone">WhatsApp / Celular</label>
-                            <div className="input-with-icon">
-                                <span className="input-icon"><WhatsAppIcon /></span>
-                                <input
-                                    type="tel"
-                                    id="validationPhone"
-                                    placeholder="Ej. 999123456"
-                                    value={validationPhone}
-                                    onChange={(e) => setValidationPhone(e.target.value)}
-                                    className="input-large"
-                                    autoFocus
-                                    required
-                                    disabled={isValidating}
-                                />
-                            </div>
-                            <p className="hint-text">
-                                (Usa el número con el que te registraste en InfoMercado)
-                            </p>
-                            
-                            {validationError === 'NOT_FOUND' ? (
-                                <div className="error-box">
-                                    <p>Tu número no está en la base de datos.</p>
-                                    <button 
-                                        type="button"
-                                        className="btn-whatsapp-redirect"
-                                        onClick={() => window.open(`https://wa.me/51946770895?text=Hola,%20soy%20emprendedor%20y%20quiero%20unirme%20al%20grupo%20Tribu%20para%20participar%20en%20el%20sorteo.`, '_blank')}
-                                    >
-                                        <WhatsAppIcon /> Escribir al Admin (+51 946 770 895)
+                            ))}
+                            {filteredEntries.length === 0 && (
+                                <div className="no-results">
+                                    <p>No se encontraron resultados para "{searchTerm}"</p>
+                                    <button className="btn btn-link" onClick={() => { setSearchTerm(''); setSelectedCategoryFilter('Todas'); }}>
+                                        Ver todos
                                     </button>
                                 </div>
-                            ) : validationError && (
-                                <p className="error-text">{validationError}</p>
                             )}
-
                         </div>
-                        <button type="submit" className="btn btn-primary btn-block btn-large" disabled={isValidating}>
-                            {isValidating ? (
-                                <span style={{display: 'flex', alignItems: 'center', gap: '10px'}}><LoaderIcon /> Verificando...</span>
-                            ) : 'Validar Acceso'}
-                        </button>
-                    </form>
-                    <div className="validation-footer">
-                        <p>¿No tienes acceso? Habla con el administrador.</p>
-                    </div>
-                </div>
-            )}
-
-            {/* STEP 3: FULL FORM */}
-            {modalStep === 'form' && (
-              <>
-                <div className="modal-header">
-                    <h2>Ficha de Inscripción</h2>
-                    <p>Validado: <span className="text-success">{validationPhone}</span></p>
-                </div>
-                
-                <form onSubmit={handlePreview} className="clean-form">
-                  
-                  {/* SECTION 1: BUSINESS PROFILE */}
-                  <div className="form-section-label">
-                      <span className="section-num">1</span>
-                      <h3>Perfil del Negocio (Directorio)</h3>
-                  </div>
-
-                  <div className="form-row">
-                    <div className="form-group" style={{flex: 1}}>
-                         <label>
-                             Logo <InfoIcon /> 
-                             <span className="helper-badge">1:1</span>
-                         </label>
-                         <label className="mini-upload">
-                            {selectedLogoImage ? (
-                                <img src={selectedLogoImage} alt="Logo" className="mini-preview" />
-                            ) : (
-                                <div className="mini-placeholder"><ImageIcon /> Subir Logo</div>
-                            )}
-                            <input type="file" ref={logoInputRef} onChange={handleLogoImageChange} className="hidden" accept="image/*"/>
-                         </label>
-                         <span className="input-helper">Rec: 500x500px</span>
-                    </div>
-                    <div style={{flex: 2}}>
-                        <div className="form-group">
-                            <label htmlFor="name">Nombre Comercial</label>
-                            <input
-                            type="text"
-                            id="name"
-                            placeholder="Ej. Estudio Creativo"
-                            value={businessName}
-                            onChange={(e) => setBusinessName(e.target.value)}
-                            required
-                            disabled={isSubmitting}
-                            />
-                        </div>
-                        <div className="form-group">
-                            <label htmlFor="ownerName">Tu Nombre</label>
-                            <div className="input-with-icon">
-                                <span className="input-icon"><UserIcon /></span>
-                                <input
-                                type="text"
-                                id="ownerName"
-                                placeholder="Ej. Juan Pérez"
-                                value={ownerName}
-                                onChange={(e) => setOwnerName(e.target.value)}
-                                required
-                                disabled={isSubmitting}
-                                />
-                            </div>
-                        </div>
-                    </div>
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="category">Rubro / Categoría</label>
-                    <select 
-                        id="category"
-                        value={formCategory}
-                        onChange={(e) => {
-                            setFormCategory(e.target.value);
-                            if (e.target.value !== 'Otro') setCustomCategory('');
-                        }}
-                        className="form-select"
-                        disabled={isSubmitting}
-                    >
-                        {PREDEFINED_CATEGORIES.map(c => (
-                            <option key={c} value={c}>{c}</option>
-                        ))}
-                    </select>
-                    {formCategory === 'Otro' && (
-                         <input
-                            type="text"
-                            className="input-custom-category"
-                            placeholder="Especifica tu rubro (Ej. Veterinaria)..."
-                            value={customCategory}
-                            onChange={(e) => setCustomCategory(e.target.value)}
-                            required
-                            disabled={isSubmitting}
-                        />
                     )}
                   </div>
-
-                  <div className="form-group">
-                     <label>Redes Sociales (Opcional)</label>
-                     <div className="social-grid">
-                        <div className="input-with-icon">
-                            <span className="input-icon"><InstagramIcon /></span>
-                            <input
-                            type="text"
-                            placeholder="Instagram"
-                            value={instagram}
-                            onChange={(e) => setInstagram(e.target.value)}
-                            disabled={isSubmitting}
-                            />
-                        </div>
-                         <div className="input-with-icon">
-                            <span className="input-icon"><FacebookIcon /></span>
-                            <input
-                            type="text"
-                            placeholder="Link Facebook"
-                            value={facebook}
-                            onChange={(e) => setFacebook(e.target.value)}
-                            disabled={isSubmitting}
-                            />
-                        </div>
-                         <div className="input-with-icon">
-                            <span className="input-icon"><TikTokIcon /></span>
-                            <input
-                            type="text"
-                            placeholder="Link TikTok"
-                            value={tiktok}
-                            onChange={(e) => setTiktok(e.target.value)}
-                            disabled={isSubmitting}
-                            />
-                        </div>
-                         <div className="input-with-icon">
-                            <span className="input-icon"><GlobeIcon /></span>
-                            <input
-                            type="text"
-                            placeholder="Sitio Web"
-                            value={website}
-                            onChange={(e) => setWebsite(e.target.value)}
-                            disabled={isSubmitting}
-                            />
-                        </div>
-                     </div>
-                  </div>
-
-                  <div className="form-group">
-                     <label htmlFor="description">Breve reseña</label>
-                     <textarea
-                        id="description"
-                        rows={2}
-                        placeholder="Describe qué hace tu negocio en 1 oración..."
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        className="form-textarea"
-                        required
-                        disabled={isSubmitting}
-                     />
-                  </div>
-                  
-                  {/* SECTION 2: GIVEAWAY INFO */}
-                  <div className="form-section-label mt-medium">
-                      <span className="section-num">2</span>
-                      <h3>Datos del Sorteo (Galería)</h3>
-                  </div>
-
-                  <div className="form-row">
-                    <div className="form-group">
-                        <label htmlFor="prize">Premio a aportar</label>
-                        <input
-                        type="text"
-                        id="prize"
-                        placeholder="Ej. Sesión de fotos"
-                        value={prize}
-                        onChange={(e) => setPrize(e.target.value)}
-                        required
-                        disabled={isSubmitting}
-                        />
-                    </div>
-                    <div className="form-group">
-                        <label htmlFor="value">Valor Comercial</label>
-                        <input
-                        type="text"
-                        id="value"
-                        placeholder="Ej. 50.00"
-                        value={value}
-                        onChange={(e) => setValue(e.target.value)}
-                        required
-                        disabled={isSubmitting}
-                        />
-                    </div>
-                  </div>
-
-                  <div className="form-group">
-                    <label>
-                        Foto del Premio
-                        <span className="helper-badge">1080x1080px (Post)</span>
-                    </label>
-                    <label className={`upload-area ${isSubmitting ? 'disabled' : ''}`}>
-                        {selectedPrizeImage ? (
-                            <div className="preview-container">
-                                <img src={selectedPrizeImage} alt="Preview" />
-                                {!isSubmitting && (
-                                    <button 
-                                        className="change-img-btn"
-                                        onClick={(e) => {
-                                            e.preventDefault(); 
-                                            setSelectedPrizeImage(null);
-                                            setPrizeImageFile(null);
-                                            if(prizeInputRef.current) prizeInputRef.current.value = '';
-                                        }}
-                                    >
-                                        Cambiar imagen
-                                    </button>
-                                )}
-                            </div>
-                        ) : (
-                            <div className="upload-placeholder">
-                                <ImageIcon />
-                                <span>Subir Flyer o Foto del Producto</span>
-                                <span className="upload-hint">Formatos recomendados: Cuadrado (1:1) o Historia (9:16)</span>
-                            </div>
-                        )}
-                        <input 
-                            type="file" 
-                            accept="image/*"
-                            ref={prizeInputRef}
-                            onChange={handlePrizeImageChange}
-                            className="hidden"
-                            disabled={isSubmitting}
-                        />
-                    </label>
-                  </div>
-                  
-                  <div className="terms-checkbox">
-                    <label>
-                        <input 
-                            type="checkbox" 
-                            checked={acceptedTerms}
-                            onChange={(e) => setAcceptedTerms(e.target.checked)}
-                            disabled={isSubmitting}
-                        />
-                        <span>
-                            Declaro que soy miembro de la Tribu y me comprometo a entregar el premio descrito en caso de salir sorteado, cumpliendo con la veracidad de la información.
-                        </span>
-                    </label>
-                  </div>
-
-                  <div className="form-footer">
-                      <button type="submit" className="btn btn-primary btn-block" disabled={isSubmitting}>
-                        Ver Vista Previa
-                      </button>
-                  </div>
-                </form>
-              </>
-            )}
-
-            {/* STEP 4: PREVIEW */}
-            {modalStep === 'preview' && (
-                <div className="preview-step">
-                     <div className="modal-header">
-                        <h2>Vista Previa</h2>
-                        <p>Así se verá tu participación en la web.</p>
-                    </div>
-
-                    <div className="preview-container-box">
-                        <span className="preview-label">Tu Tarjeta en la Galería</span>
-                        {/* Artwork Card Preview (Reusing component structure) */}
-                        <div className="artwork-card" style={{maxWidth: '300px', margin: '0 auto'}}>
-                            <div className="image-wrapper">
-                                <img src={selectedPrizeImage || 'https://via.placeholder.com/600'} alt="Preview" />
-                                <span className="category-badge-overlay">{formCategory === 'Otro' ? customCategory : formCategory}</span>
-                            </div>
-                            <div className="artwork-info">
-                                <div className="artwork-header">
-                                  <h4>{businessName}</h4>
-                                  <span className="price-badge">{value.includes('S/') ? value : `S/ ${value}`}</span>
-                                </div>
-                                <p className="artwork-prize">{prize}</p>
-                                <div className="artwork-footer" style={{display: 'flex', gap: '5px', flexWrap: 'wrap'}}>
-                                    {instagram && <span className="badge-cat" style={{fontSize: '0.7rem'}}><InstagramIcon /></span>}
-                                    {facebook && <span className="badge-cat" style={{fontSize: '0.7rem'}}><FacebookIcon /></span>}
-                                    {tiktok && <span className="badge-cat" style={{fontSize: '0.7rem'}}><TikTokIcon /></span>}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="form-footer" style={{display: 'flex', gap: '10px'}}>
-                         <button 
-                            className="btn btn-outline btn-block" 
-                            onClick={() => setModalStep('form')}
-                            disabled={isSubmitting}
-                         >
-                            <EditIcon /> Editar
-                        </button>
-                         <button 
-                            className="btn btn-primary btn-block" 
-                            onClick={handleFinalSubmit}
-                            disabled={isSubmitting}
-                         >
-                            {isSubmitting ? (
-                                <span style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px'}}>
-                                    <LoaderIcon /> Publicando...
-                                </span>
-                            ) : 'Confirmar y Publicar'}
-                        </button>
-                    </div>
-                </div>
-            )}
+              </div>
           </div>
-        </div>
       )}
     </div>
   );
@@ -2273,5 +2071,16 @@ function App() {
 
 const rootElement = document.getElementById('root');
 if (rootElement) {
-  createRoot(rootElement).render(<App />);
+  try {
+      const root = createRoot(rootElement);
+      root.render(
+          <ErrorBoundary>
+              <App />
+          </ErrorBoundary>
+      );
+  } catch (err) {
+      console.error("Critical Render Error:", err);
+      // Fallback manual render if React fails hard
+      rootElement.innerHTML = '<div style="padding:20px;text-align:center"><h1>Error Crítico</h1><p>La aplicación no pudo iniciar. Revisa la consola.</p></div>';
+  }
 }

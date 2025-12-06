@@ -7,20 +7,35 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
-    <script type="module" src="/index.tsx"></script>
-  <script type="importmap">
+    <script type="importmap">
 {
   "imports": {
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.45.4"
+    "react-dom/client": "https://aistudiocdn.com/react-dom@^19.2.1/client",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.31.0",
+    "react/": "https://aistudiocdn.com/react@^19.2.1/",
+    "react": "https://aistudiocdn.com/react@^19.2.1",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.45.4",
+    "html2canvas": "https://esm.sh/html2canvas@1.4.1",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.556.0"
   }
 }
 </script>
-<link rel="stylesheet" href="/index.css">
-</head>
+    <script type="module" src="/index.tsx"></script>
+    <link rel="stylesheet" href="/index.css">
+    <style>
+      #global-error { display: none; padding: 20px; color: red; background: #fff0f0; border: 1px solid red; margin: 20px; font-family: sans-serif; }
+    </style>
+  </head>
   <body>
+    <div id="global-error"></div>
     <div id="root"></div>
+    <script>
+      window.onerror = function(message, source, lineno, colno, error) {
+        var errDiv = document.getElementById('global-error');
+        errDiv.style.display = 'block';
+        errDiv.innerHTML = '<strong>Error Crítico:</strong> ' + message + '<br><small>' + source + ':' + lineno + '</small>';
+      };
+    </script>
   </body>
 </html>
