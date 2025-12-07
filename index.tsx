@@ -4,7 +4,39 @@ import { createClient } from '@supabase/supabase-js';
 import { GoogleGenAI } from "@google/genai";
 import html2canvas from 'html2canvas';
 
-// --- ERROR BOUNDARY (Fixes White Screen by showing the error) ---
+// --- CONFIGURACIÓN INTERNACIONAL ---
+const COUNTRY_CODES = [
+    { code: '+51', country: 'PE', label: '🇵🇪 Perú', min: 9, max: 9 },
+    { code: '+1', country: 'US', label: '🇺🇸 USA', min: 10, max: 10 },
+    { code: '+1', country: 'CA', label: '🇨🇦 Canadá', min: 10, max: 10 },
+    { code: '+52', country: 'MX', label: '🇲🇽 México', min: 10, max: 10 },
+    { code: '+57', country: 'CO', label: '🇨🇴 Colombia', min: 10, max: 10 },
+    { code: '+54', country: 'AR', label: '🇦🇷 Argentina', min: 10, max: 11 },
+    { code: '+56', country: 'CL', label: '🇨🇱 Chile', min: 9, max: 9 },
+    { code: '+593', country: 'EC', label: '🇪🇨 Ecuador', min: 9, max: 9 },
+    { code: '+58', country: 'VE', label: '🇻🇪 Venezuela', min: 10, max: 10 },
+    { code: '+591', country: 'BO', label: '🇧🇴 Bolivia', min: 8, max: 8 },
+    { code: '+34', country: 'ES', label: '🇪🇸 España', min: 9, max: 9 },
+    { code: '+33', country: 'FR', label: '🇫🇷 Francia', min: 9, max: 9 },
+    { code: '+49', country: 'DE', label: '🇩🇪 Alemania', min: 10, max: 11 },
+    { code: '+39', country: 'IT', label: '🇮🇹 Italia', min: 9, max: 10 },
+    { code: '+31', country: 'NL', label: '🇳🇱 Holanda', min: 9, max: 9 },
+    { code: '+43', country: 'AT', label: '🇦🇹 Austria', min: 10, max: 13 },
+    { code: '+41', country: 'CH', label: '🇨🇭 Suiza', min: 9, max: 9 },
+    { code: '+61', country: 'AU', label: '🇦🇺 Australia', min: 9, max: 9 },
+];
+
+// Helper to get full WhatsApp link regardless of format (Legacy Peru vs International)
+const getWhatsAppLink = (phone: string) => {
+    const clean = phone.replace(/\D/g, '');
+    // If it's a legacy Peru number (9 digits starting with 9), add 51. Otherwise assume full international code is stored.
+    if (clean.length === 9 && clean.startsWith('9')) {
+        return `https://wa.me/51${clean}`;
+    }
+    return `https://wa.me/${clean}`;
+};
+
+// --- ERROR BOUNDARY ---
 interface ErrorBoundaryProps {
   children?: React.ReactNode;
 }
@@ -107,24 +139,24 @@ const MenuIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
 );
 
-const ImageIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+const ImageIcon = ({ size=32 }: { size?: number }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
 );
 
-const InstagramIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+const InstagramIcon = ({ size=20 }: { size?: number }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
 );
 
-const FacebookIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>
+const FacebookIcon = ({ size=20 }: { size?: number }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>
 );
 
-const TikTokIcon = () => (
-   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"></path></svg>
+const TikTokIcon = ({ size=20 }: { size?: number }) => (
+   <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"></path></svg>
 );
 
-const GlobeIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10z"></path></svg>
+const GlobeIcon = ({ size=20 }: { size?: number }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10z"></path></svg>
 );
 
 const PhoneIcon = () => (
@@ -188,11 +220,11 @@ const PlusIcon = () => (
 );
 
 const EyeIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
 );
 
-const EditIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+const EditIcon = ({ size=20 }: { size?: number }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
 );
 
 const ShareIcon = () => (
@@ -233,6 +265,10 @@ const CameraIcon = () => (
 
 const ListIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+);
+
+const HelpIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
 );
 
 // --- INTERACTIVE CONFETTI COMPONENT ---
@@ -346,18 +382,8 @@ function PublicLedgerModal({ onClose }: { onClose: () => void }) {
     return (
         <div className="modal-overlay">
             <div className="modal-content-modern" style={{ maxWidth: '600px', height: '80vh', display: 'flex', flexDirection: 'column' }}>
-                <button 
-                    onClick={onClose} 
-                    style={{
-                        position: 'absolute', top: '15px', right: '15px', 
-                        background: '#e2e8f0', color: '#64748b', 
-                        border: 'none', borderRadius: '50%', width: '36px', height: '36px', 
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 10
-                    }}
-                >
-                    <XIcon />
-                </button>
-                <div className="modal-header-mission" style={{flexShrink: 0, paddingRight: '60px'}}>
+                <button className="close-btn-modern" onClick={onClose}><XIcon /></button>
+                <div className="modal-header-mission" style={{flexShrink: 0}}>
                     <h2 className="text-gradient">📜 Lista Oficial de Inscritos</h2>
                     <p className="text-gray-sm">Transparencia total. Aquí están todos los participantes.</p>
                 </div>
@@ -397,15 +423,8 @@ function PublicLedgerModal({ onClose }: { onClose: () => void }) {
                     )}
                 </div>
                 
-                <div style={{padding: '20px', borderTop: '1px solid #eee', textAlign: 'center', fontSize: '0.8rem', color: '#999', display: 'flex', flexDirection: 'column', gap: '15px'}}>
-                    <p>* Por privacidad, solo mostramos el primer nombre e inicial.</p>
-                    <button 
-                        onClick={onClose} 
-                        className="btn btn-primary"
-                        style={{width: '100%', padding: '12px', fontSize: '1rem'}}
-                    >
-                        Cerrar Lista
-                    </button>
+                <div style={{padding: '20px', borderTop: '1px solid #eee', textAlign: 'center', fontSize: '0.8rem', color: '#999'}}>
+                    * Por privacidad, solo mostramos el primer nombre e inicial.
                 </div>
             </div>
         </div>
@@ -472,7 +491,7 @@ function DigitalCardView({ entrepreneurId, onBack }: { entrepreneurId: string, o
                     <p className="dc-owner">Gerente: {data.ownerName}</p>
                     
                     <div className="dc-links">
-                        <a href={`https://wa.me/51${data.phone}`} target="_blank" className="dc-btn whatsapp">
+                        <a href={getWhatsAppLink(data.phone)} target="_blank" className="dc-btn whatsapp">
                             <WhatsAppIcon /> Contactar por WhatsApp
                         </a>
                         {data.instagram && (
@@ -622,8 +641,9 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
         if (!editingMember) return;
         
         const cleanPhone = editingMember.phone.replace(/\D/g, '');
-        if (!/^9\d{8}$/.test(cleanPhone)) {
-            alert('El número debe ser un celular válido de Perú (9 dígitos, empieza con 9)');
+        // Relaxed validation for admin editing
+        if (cleanPhone.length < 8) {
+            alert('El número parece muy corto. Verifícalo.');
             return;
         }
 
@@ -642,8 +662,8 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
         if (!editingEnrolled) return;
         
         const cleanPhone = editingEnrolled.phone.replace(/\D/g, '');
-        if (!/^9\d{8}$/.test(cleanPhone)) {
-            alert('El número debe ser un celular válido de Perú (9 dígitos, empieza con 9)');
+        if (cleanPhone.length < 8) {
+            alert('El número parece muy corto.');
             return;
         }
 
@@ -739,7 +759,7 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                                 <tr key={entry.id} className={entry.isFeatured ? 'featured-row' : ''}>
                                     <td><div className="cell-flex"><img src={entry.logoImage} className="table-img" alt=""/><strong>{entry.name}</strong>{entry.isFeatured && <StarFilledIcon size={14} />}</div></td>
                                     <td>{entry.ownerName}</td>
-                                    <td><a href={`https://wa.me/51${entry.phone}`} target="_blank" className="table-link">{entry.phone}</a></td>
+                                    <td><a href={getWhatsAppLink(entry.phone)} target="_blank" className="table-link">{entry.phone}</a></td>
                                     <td>{entry.prize}</td>
                                     <td>{entry.value}</td>
                                     <td><span className="badge-cat">{entry.category}</span></td>
@@ -766,7 +786,7 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                                     <td><span className="badge-cat" style={{background: '#d1fae5', color: '#065f46'}}>{client.ticket_code}</span></td>
                                     <td>
                                         <div className="action-buttons-row">
-                                             <a href={`https://wa.me/51${client.phone}`} target="_blank" className="btn-icon-action" style={{color: '#25D366', borderColor: '#25D366'}} title="Contactar por WhatsApp">
+                                             <a href={getWhatsAppLink(client.phone)} target="_blank" className="btn-icon-action" style={{color: '#25D366', borderColor: '#25D366'}} title="Contactar por WhatsApp">
                                                 <WhatsAppIcon />
                                             </a>
                                             <button onClick={() => handleDeleteClient(client.id)} className="btn-icon-action text-red"><TrashIcon /></button>
@@ -786,7 +806,7 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                                     <td><div className="action-buttons-row">
                                         <button onClick={() => setEditingMember(member)} className="btn-icon-action text-blue"><EditIcon /></button>
                                         <button onClick={() => handleDeleteMember(member.id)} className="btn-icon-action text-red"><TrashIcon /></button>
-                                        <a href={`https://wa.me/51${member.phone}`} target="_blank" className="btn-icon-action" style={{color: '#25D366'}}><WhatsAppIcon /></a>
+                                        <a href={getWhatsAppLink(member.phone)} target="_blank" className="btn-icon-action" style={{color: '#25D366'}}><WhatsAppIcon /></a>
                                     </div></td>
                                 </tr>
                             ))}</tbody>
@@ -807,11 +827,10 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                                     type="tel" 
                                     value={editingMember.phone} 
                                     onChange={(e) => {
-                                        const val = e.target.value.replace(/\D/g, '').slice(0, 9);
+                                        const val = e.target.value.replace(/\D/g, '').slice(0, 15);
                                         setEditingMember({...editingMember, phone: val});
                                     }} 
-                                    maxLength={9}
-                                    placeholder="9..."
+                                    placeholder="Número internacional..."
                                     required 
                                 />
                             </div>
@@ -840,11 +859,10 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                                     type="tel" 
                                     value={editingEnrolled.phone} 
                                     onChange={(e) => {
-                                        const val = e.target.value.replace(/\D/g, '').slice(0, 9);
+                                        const val = e.target.value.replace(/\D/g, '').slice(0, 15);
                                         setEditingEnrolled({...editingEnrolled, phone: val});
                                     }} 
-                                    maxLength={9}
-                                    placeholder="9..."
+                                    placeholder="Número..."
                                     required 
                                 />
                              </div>
@@ -883,13 +901,13 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
 
 // ... [PreRegisterForm]
 function PreRegisterForm({ onBack }: { onBack: () => void }) {
-    // Removed 'lock' step - Entry is now public "portal style"
     const [wizardStep, setWizardStep] = useState<'member' | 'business' | 'success'>('member');
     
     // Member Data (Step 1)
     const [memberName, setMemberName] = useState('');
     const [memberBusiness, setMemberBusiness] = useState('');
     const [memberPhone, setMemberPhone] = useState('');
+    const [selectedCountry, setSelectedCountry] = useState(COUNTRY_CODES[0]); // Default Peru
 
     // Business Data (Step 2)
     const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -921,14 +939,18 @@ function PreRegisterForm({ onBack }: { onBack: () => void }) {
         setErrorMsg('');
         
         try {
-            // Validate Phone
-            if (memberPhone.length !== 9 || !memberPhone.startsWith('9')) {
-                throw new Error("El teléfono debe ser un celular válido de Perú (9 dígitos, empieza con 9)");
+            // Validate Phone dynamic length
+            const cleanPhone = memberPhone.replace(/\D/g, '');
+            if (cleanPhone.length < selectedCountry.min || cleanPhone.length > selectedCountry.max) {
+                throw new Error(`El teléfono para ${selectedCountry.label} debe tener entre ${selectedCountry.min} y ${selectedCountry.max} dígitos.`);
             }
             
+            // Format phone including country code for storage
+            const fullPhone = `${selectedCountry.code.replace('+','')}${cleanPhone}`;
+
             // Upsert member
             const { error } = await supabase.from('members').upsert([{ 
-                phone: memberPhone, name: memberName, business_name: memberBusiness 
+                phone: fullPhone, name: memberName, business_name: memberBusiness 
             }], { onConflict: 'phone' });
             
             if (error) throw error;
@@ -958,7 +980,6 @@ function PreRegisterForm({ onBack }: { onBack: () => void }) {
         }
         setIsAiLoading(true);
         try {
-            // Using local init to prevent global crash
             const ai = getAiModel();
             if (!ai) {
                 alert("La IA no está disponible en este momento (Falta API Key).");
@@ -1002,8 +1023,12 @@ function PreRegisterForm({ onBack }: { onBack: () => void }) {
             if (!formattedValue.toUpperCase().includes('S/')) formattedValue = `S/ ${formattedValue.replace('$', '')}`;
             const formattedInsta = instagram.startsWith('@') ? instagram : (instagram ? `@${instagram}` : '');
 
+            // Construct full phone again just to be safe or reuse state if not changed
+            const cleanPhone = memberPhone.replace(/\D/g, '');
+            const fullPhone = `${selectedCountry.code.replace('+','')}${cleanPhone}`;
+
             const { error } = await supabase.from('entrepreneurs').insert([{
-                business_name: memberBusiness, owner_name: memberName, phone: memberPhone,
+                business_name: memberBusiness, owner_name: memberName, phone: fullPhone,
                 prize: prize, prize_value: formattedValue, prize_image_url: prizeUrl,
                 logo_image_url: logoUrl, instagram: formattedInsta, facebook, tiktok, website,
                 description: description || 'Emprendedor de la tribu', category: finalCategory
@@ -1077,19 +1102,31 @@ function PreRegisterForm({ onBack }: { onBack: () => void }) {
                              </div>
 
                              <div className="form-group-large">
-                                 <label>Número de WhatsApp (Contacto)</label>
-                                 <div className="input-with-icon">
-                                     <span className="input-icon"><WhatsAppIcon /></span>
+                                 <label>WhatsApp (Contacto)</label>
+                                 <div className="input-modern-wrapper" style={{padding: '4px 8px'}}>
+                                     <div style={{marginRight: '8px', borderRight: '1px solid #ddd'}}>
+                                         <select 
+                                            value={selectedCountry.code} 
+                                            onChange={(e) => {
+                                                const country = COUNTRY_CODES.find(c => c.code === e.target.value);
+                                                if(country) setSelectedCountry(country);
+                                            }}
+                                            style={{border: 'none', background: 'transparent', fontWeight: 'bold', outline: 'none', maxWidth: '80px', cursor: 'pointer'}}
+                                         >
+                                             {COUNTRY_CODES.map(c => (
+                                                 <option key={c.country} value={c.code}>{c.label} {c.code}</option>
+                                             ))}
+                                         </select>
+                                     </div>
                                      <input 
                                         type="tel" 
                                         value={memberPhone} 
                                         onChange={(e) => {
-                                            const val = e.target.value.replace(/\D/g, '').slice(0, 9);
+                                            const val = e.target.value.replace(/\D/g, '');
                                             setMemberPhone(val);
                                         }}
-                                        maxLength={9}
                                         required 
-                                        placeholder="Ej. 999123456" 
+                                        placeholder={`Ej. ${'9'.repeat(selectedCountry.min)}`} 
                                      />
                                  </div>
                                  <p className="input-hint">Te contactaremos por aquí si ganas.</p>
@@ -1185,14 +1222,11 @@ function ClientRegistrationModal({ onClose, onGoToDirectory }: { onClose: () => 
     const [ticketCode, setTicketCode] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [randomBrands, setRandomBrands] = useState<Entrepreneur[]>([]);
-    // Removed isDownloading as per request to remove sharing features that caused errors
+    const [selectedCountry, setSelectedCountry] = useState(COUNTRY_CODES[0]); // Default Peru
     const ticketRef = useRef<HTMLDivElement>(null);
-    
-    // NEW: Track which brands have been clicked
     const [clickedBrands, setClickedBrands] = useState<Set<string>>(new Set());
 
     const fetchRandomBrands = async () => {
-        // Fetch 3 random brands to follow
         const { data } = await supabase.from('entrepreneurs').select('*').limit(3);
         if (data) {
              const mapped: Entrepreneur[] = data.map(item => ({
@@ -1216,14 +1250,14 @@ function ClientRegistrationModal({ onClose, onGoToDirectory }: { onClose: () => 
     const handleFormSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
-        // STRICT PERUVIAN PHONE VALIDATION
-        if (phone.length !== 9 || !phone.startsWith('9')) {
-            alert('Por favor, ingresa un número de celular válido de Perú (9 dígitos, empieza con 9).');
+        // Flexible validation based on country
+        const cleanPhone = phone.replace(/\D/g, '');
+        if (cleanPhone.length < selectedCountry.min || cleanPhone.length > selectedCountry.max) {
+            alert(`Para ${selectedCountry.label}, el número debe tener entre ${selectedCountry.min} y ${selectedCountry.max} dígitos.`);
             return;
         }
 
         setIsLoading(true);
-        // Simulate check
         setTimeout(() => {
             setIsLoading(false);
             fetchRandomBrands();
@@ -1231,12 +1265,10 @@ function ClientRegistrationModal({ onClose, onGoToDirectory }: { onClose: () => 
         }, 800);
     };
 
-    // NEW: Handle Brand Click to Track it
     const handleBrandClick = (brandId: string, instagramHandle: string) => {
         const url = `https://instagram.com/${instagramHandle.replace('@','')}`;
         window.open(url, '_blank');
         
-        // Add to set
         setClickedBrands(prev => {
             const newSet = new Set(prev);
             newSet.add(brandId);
@@ -1250,10 +1282,12 @@ function ClientRegistrationModal({ onClose, onGoToDirectory }: { onClose: () => 
             const code = `#TRIBU-${Math.floor(1000 + Math.random() * 9000)}`;
             
             const cleanPhone = phone.replace(/\D/g, '');
+            // Create full international format
+            const fullPhone = `${selectedCountry.code.replace('+','')}${cleanPhone}`;
 
             const { error } = await supabase.from('clients').insert([{
                 name: name,
-                phone: cleanPhone,
+                phone: fullPhone,
                 ticket_code: code
             }]);
 
@@ -1269,13 +1303,11 @@ function ClientRegistrationModal({ onClose, onGoToDirectory }: { onClose: () => 
         }
     };
 
-    // Check if all displayed brands have been clicked
     const allBrandsClicked = randomBrands.length > 0 && clickedBrands.size >= randomBrands.length;
     const progressPercentage = randomBrands.length > 0 ? (clickedBrands.size / randomBrands.length) * 100 : 0;
 
     return (
         <div className="modal-overlay">
-            {/* IMPROVED MODAL CONTENT */}
             <div className={`modal-content-modern ${step === 'ticket' ? 'wide-modal' : ''}`}>
                 <button className="close-btn-modern" onClick={onClose}><XIcon /></button>
                 
@@ -1299,20 +1331,31 @@ function ClientRegistrationModal({ onClose, onGoToDirectory }: { onClose: () => 
                                 </div>
                                 <div className="form-group-modern">
                                     <label>Tu WhatsApp (Para avisarte si ganas)</label>
-                                    <div className="input-modern-wrapper">
-                                        <span className="country-prefix"><WhatsAppIcon /> +51</span>
-                                        <div className="prefix-divider"></div>
+                                    <div className="input-modern-wrapper" style={{paddingLeft: '10px'}}>
+                                        <div style={{borderRight: '1px solid #ddd', marginRight: '10px', display: 'flex', alignItems: 'center'}}>
+                                            <select 
+                                                value={selectedCountry.code} 
+                                                onChange={(e) => {
+                                                    const country = COUNTRY_CODES.find(c => c.code === e.target.value);
+                                                    if(country) setSelectedCountry(country);
+                                                }}
+                                                style={{border: 'none', background: 'transparent', fontWeight: 'bold', fontSize: '0.9rem', outline: 'none', maxWidth: '85px', cursor: 'pointer', appearance: 'none', WebkitAppearance: 'none'}}
+                                            >
+                                                {COUNTRY_CODES.map(c => (
+                                                    <option key={c.country} value={c.code}>{c.label} ({c.code})</option>
+                                                ))}
+                                            </select>
+                                            <span style={{fontSize: '0.8rem', marginLeft: '2px'}}>▼</span>
+                                        </div>
                                         <input 
                                             type="tel" 
                                             value={phone} 
                                             onChange={(e) => {
-                                                // STRICT INPUT MASKING: Numbers only, max 9 chars
-                                                const val = e.target.value.replace(/\D/g, '').slice(0, 9);
+                                                const val = e.target.value.replace(/\D/g, '');
                                                 setPhone(val);
                                             }}
-                                            maxLength={9}
                                             required 
-                                            placeholder="999 123 456" 
+                                            placeholder={`Número (${selectedCountry.min} dígitos)`} 
                                         />
                                     </div>
                                 </div>
@@ -1331,7 +1374,6 @@ function ClientRegistrationModal({ onClose, onGoToDirectory }: { onClose: () => 
                             <h2 className="text-gradient">🎯 Misión Requerida</h2>
                             <p className="text-gray-sm">Sigue a estas marcas para desbloquear tu ticket.</p>
                             
-                            {/* PROGRESS BAR */}
                             <div className="mission-progress-track">
                                 <div className="mission-progress-fill" style={{width: `${progressPercentage}%`}}></div>
                             </div>
@@ -1367,7 +1409,6 @@ function ClientRegistrationModal({ onClose, onGoToDirectory }: { onClose: () => 
                         </div>
 
                         <div className="mission-footer-action">
-                            {/* WARNING NOTICE */}
                             <div className="warning-box-clean">
                                 ⚠️ Verificaremos que sigas a las cuentas si ganas.
                             </div>
@@ -1391,7 +1432,6 @@ function ClientRegistrationModal({ onClose, onGoToDirectory }: { onClose: () => 
                         <p className="text-center mb-medium text-gray">Este es tu pase oficial para el sorteo.</p>
                         
                         <div className="ticket-wrapper-centered">
-                            {/* TICKET VISUAL - DOWNLOAD TARGET */}
                             <div className="golden-ticket-visual" ref={ticketRef}>
                                 <div className="ticket-stub-left">
                                     <div className="ticket-brand-header">LA TRIBU</div>
@@ -1433,9 +1473,466 @@ function ClientRegistrationModal({ onClose, onGoToDirectory }: { onClose: () => 
     );
 }
 
+// --- NEW ENTREPRENEUR PORTAL COMPONENT (SUPER AMIGABLE & EDUCATIVO) ---
+function EntrepreneurPortal({ onBack }: { onBack: () => void }) {
+    const [step, setStep] = useState<'login' | 'dashboard'>('login');
+    const [activeTab, setActiveTab] = useState<'business' | 'prize'>('business');
+    const [loginPhone, setLoginPhone] = useState('');
+    const [selectedCountry, setSelectedCountry] = useState(COUNTRY_CODES[0]);
+    const [data, setData] = useState<Entrepreneur | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [saving, setSaving] = useState(false);
+    
+    // Edit Form State
+    const [editForm, setEditForm] = useState<Partial<Entrepreneur>>({});
+    const [logoFile, setLogoFile] = useState<File | null>(null);
+    const [logoPreview, setLogoPreview] = useState<string | null>(null);
+    const [prizeFile, setPrizeFile] = useState<File | null>(null);
+    const [prizePreview, setPrizePreview] = useState<string | null>(null);
+
+    const handleLogin = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        
+        try {
+            const cleanPhone = loginPhone.replace(/\D/g, '');
+            const fullPhone = `${selectedCountry.code.replace('+','')}${cleanPhone}`;
+            
+            // Flexible Search
+            let { data: entData, error } = await supabase
+                .from('entrepreneurs')
+                .select('*')
+                .eq('phone', fullPhone)
+                .single();
+
+            if (!entData) {
+                const { data: legacyData } = await supabase
+                    .from('entrepreneurs')
+                    .select('*')
+                    .like('phone', `%${cleanPhone}`)
+                    .limit(1)
+                    .single();
+                entData = legacyData;
+            }
+
+            if (entData) {
+                const mappedData: Entrepreneur = {
+                    id: entData.id,
+                    name: entData.business_name,
+                    ownerName: entData.owner_name,
+                    phone: entData.phone,
+                    prize: entData.prize,
+                    value: entData.prize_value,
+                    prizeImage: entData.prize_image_url || '',
+                    logoImage: entData.logo_image_url || '',
+                    date: new Date(entData.created_at),
+                    instagram: entData.instagram,
+                    facebook: entData.facebook,
+                    tiktok: entData.tiktok,
+                    website: entData.website,
+                    description: entData.description,
+                    category: entData.category,
+                    isFeatured: entData.is_featured
+                };
+
+                setData(mappedData);
+                setEditForm({
+                    name: mappedData.name,
+                    ownerName: mappedData.ownerName,
+                    category: mappedData.category,
+                    description: mappedData.description,
+                    instagram: mappedData.instagram,
+                    facebook: mappedData.facebook,
+                    tiktok: mappedData.tiktok,
+                    website: mappedData.website,
+                    prize: mappedData.prize,
+                    value: mappedData.value
+                });
+                setLogoPreview(mappedData.logoImage);
+                setPrizePreview(mappedData.prizeImage);
+                setStep('dashboard');
+            } else {
+                alert('No encontramos un registro con este número. Asegúrate de haberte inscrito primero.');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Error al buscar. Intenta nuevamente.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSave = async () => {
+        if (!data) return;
+        setSaving(true);
+        try {
+            let logoUrl = data.logoImage;
+            let prizeUrl = data.prizeImage;
+
+            if (logoFile) logoUrl = await uploadToStorage(logoFile);
+            if (prizeFile) prizeUrl = await uploadToStorage(prizeFile);
+
+            const { error } = await supabase
+                .from('entrepreneurs')
+                .update({
+                    business_name: editForm.name,
+                    owner_name: editForm.ownerName,
+                    category: editForm.category,
+                    description: editForm.description,
+                    instagram: editForm.instagram,
+                    facebook: editForm.facebook,
+                    tiktok: editForm.tiktok,
+                    website: editForm.website,
+                    prize: editForm.prize,
+                    prize_value: editForm.value,
+                    logo_image_url: logoUrl,
+                    prize_image_url: prizeUrl
+                })
+                .eq('id', data.id);
+
+            if (error) throw error;
+            
+            // Update local state to reflect changes immediately
+            setData({ ...data, logoImage: logoUrl, prizeImage: prizeUrl, ...editForm } as Entrepreneur);
+            alert('¡Genial! Tus datos han sido actualizados. 🎉');
+        } catch (err) {
+            console.error(err);
+            alert('Hubo un problema al guardar. Intenta de nuevo.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'prize') => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            const url = URL.createObjectURL(file);
+            if (type === 'logo') { setLogoFile(file); setLogoPreview(url); }
+            else { setPrizeFile(file); setPrizePreview(url); }
+        }
+    };
+
+    if (step === 'login') {
+        return (
+            <div className="container" style={{paddingTop: '120px', minHeight: '80vh', display: 'flex', justifyContent: 'center'}}>
+                <div className="card p-40" style={{maxWidth: '450px', width: '100%', textAlign: 'center'}}>
+                    <div style={{color: '#e1306c', marginBottom: '20px'}}><BriefcaseIcon /></div>
+                    <h2 style={{marginBottom: '10px'}}>Portal del Emprendedor</h2>
+                    <p style={{marginBottom: '20px', color: '#64748b'}}>Ingresa tu WhatsApp registrado para editar tu perfil.</p>
+                    
+                    <form onSubmit={handleLogin} className="clean-form">
+                        <div className="form-group-modern">
+                            <label>Tu WhatsApp</label>
+                            <div className="input-modern-wrapper" style={{paddingLeft: '10px'}}>
+                                <div style={{borderRight: '1px solid #ddd', marginRight: '10px', display: 'flex', alignItems: 'center'}}>
+                                    <select 
+                                        value={selectedCountry.code} 
+                                        onChange={(e) => {
+                                            const country = COUNTRY_CODES.find(c => c.code === e.target.value);
+                                            if(country) setSelectedCountry(country);
+                                        }}
+                                        style={{border: 'none', background: 'transparent', fontWeight: 'bold', fontSize: '0.9rem', outline: 'none', maxWidth: '85px', cursor: 'pointer', appearance: 'none', WebkitAppearance: 'none'}}
+                                    >
+                                        {COUNTRY_CODES.map(c => (
+                                            <option key={c.country} value={c.code}>{c.label} ({c.code})</option>
+                                        ))}
+                                    </select>
+                                    <span style={{fontSize: '0.8rem', marginLeft: '2px'}}>▼</span>
+                                </div>
+                                <input 
+                                    type="tel" 
+                                    value={loginPhone} 
+                                    onChange={(e) => setLoginPhone(e.target.value.replace(/\D/g, ''))}
+                                    required 
+                                    placeholder="Número de celular" 
+                                />
+                            </div>
+                        </div>
+                        <button className="btn btn-primary btn-block mt-medium" disabled={loading}>
+                            {loading ? <LoaderIcon /> : 'Ingresar al Portal'}
+                        </button>
+                    </form>
+                    <button onClick={onBack} className="btn-link mt-medium">Volver</button>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div style={{background: '#f8fafc', minHeight: '100vh', paddingTop: '100px', paddingBottom: '80px'}}>
+            <div className="container" style={{maxWidth: '800px'}}>
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
+                    <button onClick={onBack} className="btn-link-back">← Cerrar Sesión</button>
+                    <div style={{background: '#d1fae5', color: '#065f46', padding: '4px 12px', borderRadius: '20px', fontWeight: 'bold', fontSize: '0.8rem'}}>
+                        Modo Editor
+                    </div>
+                </div>
+
+                <div className="card p-40" style={{borderTop: '5px solid #e1306c'}}>
+                    <h2 style={{textAlign: 'center', marginBottom: '10px'}}>Hola, {editForm.ownerName?.split(' ')[0]} 👋</h2>
+                    <p style={{textAlign: 'center', color: '#64748b', marginBottom: '30px'}}>Vamos a poner tu negocio guapo. Elige qué quieres editar:</p>
+
+                    {/* BIG TABS */}
+                    <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '30px'}}>
+                        <button 
+                            onClick={() => setActiveTab('business')}
+                            style={{
+                                padding: '20px', 
+                                background: activeTab === 'business' ? '#fff0f5' : 'white', 
+                                border: `2px solid ${activeTab === 'business' ? '#e1306c' : '#e2e8f0'}`,
+                                borderRadius: '12px',
+                                cursor: 'pointer',
+                                transition: '0.2s'
+                            }}
+                        >
+                            <div style={{fontSize: '2rem', marginBottom: '5px'}}>🏢</div>
+                            <div style={{fontWeight: 800, color: '#333'}}>Mi Empresa</div>
+                            <div style={{fontSize: '0.8rem', color: '#666'}}>Logo, Redes, Datos</div>
+                        </button>
+
+                        <button 
+                            onClick={() => setActiveTab('prize')}
+                            style={{
+                                padding: '20px', 
+                                background: activeTab === 'prize' ? '#fff0f5' : 'white', 
+                                border: `2px solid ${activeTab === 'prize' ? '#e1306c' : '#e2e8f0'}`,
+                                borderRadius: '12px',
+                                cursor: 'pointer',
+                                transition: '0.2s'
+                            }}
+                        >
+                            <div style={{fontSize: '2rem', marginBottom: '5px'}}>🎁</div>
+                            <div style={{fontWeight: 800, color: '#333'}}>Mi Premio</div>
+                            <div style={{fontSize: '0.8rem', color: '#666'}}>Foto, Título, Reglas</div>
+                        </button>
+                    </div>
+                    
+                    {/* TAB CONTENT: BUSINESS */}
+                    {activeTab === 'business' && (
+                        <div className="animate-fade-up">
+                            <div className="form-section-label"><span className="section-icon"><BriefcaseIcon /></span><h3>Datos de la Marca</h3></div>
+                            
+                            {/* LOGO UPLOAD REDESIGNED */}
+                            <div className="form-group mb-medium" style={{textAlign: 'center', position: 'relative'}}>
+                                <label style={{marginBottom: '10px', display: 'block', fontWeight: 'bold', color: '#333'}}>Tu Logo</label>
+                                
+                                <div style={{position: 'relative', width: '160px', height: '160px', margin: '0 auto'}}>
+                                    <label className="upload-box-modern" style={{
+                                        width: '100%', height: '100%', 
+                                        borderRadius: '50%', 
+                                        border: '4px solid white',
+                                        boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+                                        overflow: 'hidden',
+                                        background: '#f8fafc',
+                                        position: 'relative',
+                                        cursor: 'pointer'
+                                    }}>
+                                        {logoPreview ? (
+                                            <img src={logoPreview} className="upload-preview-img" style={{width: '100%', height: '100%', objectFit: 'cover'}} />
+                                        ) : (
+                                            <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#cbd5e1'}}>
+                                                <ImageIcon size={40} />
+                                                <span style={{fontSize: '0.7rem', marginTop: '4px'}}>Subir</span>
+                                            </div>
+                                        )}
+                                        <input type="file" onChange={(e) => handleImageSelect(e, 'logo')} className="hidden" accept="image/*"/>
+                                        
+                                        {/* Overlay for edit hint */}
+                                        <div style={{
+                                            position: 'absolute', bottom: '0', left: '0', right: '0', 
+                                            background: 'rgba(0,0,0,0.5)', color: 'white', 
+                                            fontSize: '0.7rem', padding: '4px', textAlign: 'center'
+                                        }}>
+                                            CAMBIAR
+                                        </div>
+                                    </label>
+                                    
+                                    {/* Floating Edit Icon */}
+                                    <div style={{
+                                        position: 'absolute', bottom: '10px', right: '10px', 
+                                        background: '#e1306c', color: 'white', 
+                                        width: '32px', height: '32px', borderRadius: '50%', 
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        boxShadow: '0 4px 10px rgba(0,0,0,0.2)',
+                                        pointerEvents: 'none'
+                                    }}>
+                                        <EditIcon size={16} />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="grid-2-col">
+                                <div className="form-group-large">
+                                    <label>Nombre Comercial</label>
+                                    <input type="text" value={editForm.name || ''} onChange={e => setEditForm({...editForm, name: e.target.value})} className="input-large" />
+                                </div>
+                                <div className="form-group-large">
+                                    <label>Rubro</label>
+                                    <select value={PREDEFINED_CATEGORIES.includes(editForm.category || '') ? editForm.category : 'Otro'} onChange={e => setEditForm({...editForm, category: e.target.value})} className="form-select-large">
+                                        {PREDEFINED_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+
+                            {/* MOVED: Business Description */}
+                            <div className="form-group-large" style={{marginTop: '20px'}}>
+                                <label>Historia / Reseña de tu Empresa</label>
+                                <p className="input-hint" style={{marginBottom: '8px'}}>Cuéntanos de qué trata tu negocio para que los clientes te conozcan mejor.</p>
+                                <textarea 
+                                    rows={4} 
+                                    value={editForm.description || ''} 
+                                    onChange={e => setEditForm({...editForm, description: e.target.value})} 
+                                    className="form-textarea-large"
+                                    placeholder="Somos expertos en..."
+                                    style={{border: '2px solid #e2e8f0', background: 'white', width: '100%'}} 
+                                />
+                            </div>
+
+                            {/* SOCIALS CARDS DESIGN - HIGHLY VISUAL */}
+                            <div className="separator-line"></div>
+                            <div className="form-section-label"><span className="section-icon"><InstagramIcon /></span><h3>Tus Redes Sociales</h3></div>
+                            <p style={{fontSize: '0.9rem', color: '#64748b', marginBottom: '20px'}}>
+                                Asegúrate de que los enlaces funcionen para que los clientes te encuentren.
+                            </p>
+
+                            {/* INSTAGRAM CARD */}
+                            <div style={{background: 'white', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '20px', marginBottom: '16px', boxShadow: '0 4px 6px rgba(0,0,0,0.02)'}}>
+                                <div style={{display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px'}}>
+                                    <div style={{background: '#fce7f3', padding: '8px', borderRadius: '10px', color: '#e1306c'}}>
+                                        <InstagramIcon size={24} />
+                                    </div>
+                                    <label style={{fontSize: '1rem', fontWeight: '800', color: '#333'}}>Instagram</label>
+                                </div>
+                                <input 
+                                    type="text" 
+                                    placeholder="Ej: @mi_tienda_peru" 
+                                    value={editForm.instagram || ''} 
+                                    onChange={(e) => setEditForm({...editForm, instagram: e.target.value})} 
+                                    style={{width: '100%', padding: '12px 16px', borderRadius: '10px', border: '2px solid #fbcfe8', fontSize: '1rem', outline: 'none', transition: '0.2s'}}
+                                    onFocus={(e) => e.target.style.borderColor = '#e1306c'}
+                                    onBlur={(e) => e.target.style.borderColor = '#fbcfe8'}
+                                />
+                                <p style={{fontSize: '0.8rem', color: '#831843', marginTop: '6px', marginLeft: '4px'}}>* Solo coloca tu usuario o el enlace completo.</p>
+                            </div>
+
+                            {/* FACEBOOK CARD */}
+                            <div style={{background: 'white', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '20px', marginBottom: '16px', boxShadow: '0 4px 6px rgba(0,0,0,0.02)'}}>
+                                <div style={{display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px'}}>
+                                    <div style={{background: '#e0e7ff', padding: '8px', borderRadius: '10px', color: '#1877f2'}}>
+                                        <FacebookIcon size={24} />
+                                    </div>
+                                    <label style={{fontSize: '1rem', fontWeight: '800', color: '#333'}}>Facebook</label>
+                                </div>
+                                <input 
+                                    type="text" 
+                                    placeholder="Pega el enlace de tu página aquí" 
+                                    value={editForm.facebook || ''} 
+                                    onChange={(e) => setEditForm({...editForm, facebook: e.target.value})} 
+                                    style={{width: '100%', padding: '12px 16px', borderRadius: '10px', border: '2px solid #bfdbfe', fontSize: '1rem', outline: 'none', transition: '0.2s'}}
+                                    onFocus={(e) => e.target.style.borderColor = '#1877f2'}
+                                    onBlur={(e) => e.target.style.borderColor = '#bfdbfe'}
+                                />
+                            </div>
+
+                            {/* TIKTOK CARD */}
+                            <div style={{background: 'white', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '20px', marginBottom: '16px', boxShadow: '0 4px 6px rgba(0,0,0,0.02)'}}>
+                                <div style={{display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px'}}>
+                                    <div style={{background: '#f1f5f9', padding: '8px', borderRadius: '10px', color: '#000'}}>
+                                        <TikTokIcon size={24} />
+                                    </div>
+                                    <label style={{fontSize: '1rem', fontWeight: '800', color: '#333'}}>TikTok</label>
+                                </div>
+                                <input 
+                                    type="text" 
+                                    placeholder="Usuario o enlace de TikTok" 
+                                    value={editForm.tiktok || ''} 
+                                    onChange={(e) => setEditForm({...editForm, tiktok: e.target.value})} 
+                                    style={{width: '100%', padding: '12px 16px', borderRadius: '10px', border: '2px solid #cbd5e1', fontSize: '1rem', outline: 'none', transition: '0.2s'}}
+                                    onFocus={(e) => e.target.style.borderColor = '#000'}
+                                    onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
+                                />
+                            </div>
+
+                            {/* WEBSITE CARD */}
+                            <div style={{background: 'white', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '20px', marginBottom: '16px', boxShadow: '0 4px 6px rgba(0,0,0,0.02)'}}>
+                                <div style={{display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px'}}>
+                                    <div style={{background: '#d1fae5', padding: '8px', borderRadius: '10px', color: '#059669'}}>
+                                        <GlobeIcon size={24} />
+                                    </div>
+                                    <label style={{fontSize: '1rem', fontWeight: '800', color: '#333'}}>Sitio Web (Opcional)</label>
+                                </div>
+                                <input 
+                                    type="text" 
+                                    placeholder="www.tu-negocio.com" 
+                                    value={editForm.website || ''} 
+                                    onChange={(e) => setEditForm({...editForm, website: e.target.value})} 
+                                    style={{width: '100%', padding: '12px 16px', borderRadius: '10px', border: '2px solid #a7f3d0', fontSize: '1rem', outline: 'none', transition: '0.2s'}}
+                                    onFocus={(e) => e.target.style.borderColor = '#059669'}
+                                    onBlur={(e) => e.target.style.borderColor = '#a7f3d0'}
+                                />
+                            </div>
+
+                        </div>
+                    )}
+
+                    {/* TAB CONTENT: PRIZE */}
+                    {activeTab === 'prize' && (
+                        <div className="animate-fade-up">
+                            <div className="form-section-label"><span className="section-icon"><GiftIcon /></span><h3>¿Qué vas a regalar?</h3></div>
+                            
+                            {/* PRIZE PHOTO */}
+                            <div className="form-group mb-medium">
+                                <label>Foto del Premio (Muy Importante)</label>
+                                <p className="input-hint">Una buena foto atrae más clientes.</p>
+                                <label className="upload-box-wide" style={{height: '220px'}}>
+                                    {prizePreview ? <img src={prizePreview} style={{height: '100%', objectFit: 'contain'}} /> : <span>Toca para subir foto</span>}
+                                    <input type="file" onChange={(e) => handleImageSelect(e, 'prize')} className="hidden" accept="image/*"/>
+                                </label>
+                            </div>
+
+                            {/* PRIZE DESCRIPTION BOX - UPDATED TO BE PROMINENT AND LARGE */}
+                            <div className="form-group-large">
+                                <label>Descripción del Regalo a Sortear</label>
+                                <div style={{background: '#fffbeb', padding: '10px', borderRadius: '8px', marginBottom: '10px', fontSize: '0.85rem', color: '#92400e'}}>
+                                    🎁 Escribe aquí qué vas a regalar. Hazlo sonar increíble.
+                                </div>
+                                <textarea 
+                                    rows={4} 
+                                    value={editForm.prize || ''} 
+                                    onChange={e => setEditForm({...editForm, prize: e.target.value})} 
+                                    className="form-textarea-large"
+                                    placeholder="Ej. Vale de consumo por S/ 50.00..."
+                                    style={{border: '2px solid #e1306c', background: '#fff0f5', fontSize: '1.1rem', fontWeight: '600', width: '100%'}} 
+                                />
+                            </div>
+
+                            <div className="form-group-large">
+                                <label>Valor Referencial (S/)</label>
+                                <input type="text" placeholder="50.00" value={editForm.value || ''} onChange={e => setEditForm({...editForm, value: e.target.value})} className="input-large" />
+                            </div>
+                        </div>
+                    )}
+
+                    {/* SAVE BUTTON (FLOATING OR BOTTOM) */}
+                    <div style={{marginTop: '30px', position: 'sticky', bottom: '20px', zIndex: 10}}>
+                        <button onClick={handleSave} className="btn btn-primary btn-block btn-giant-form" disabled={saving}>
+                            {saving ? <LoaderIcon /> : 'GUARDAR CAMBIOS'}
+                        </button>
+                    </div>
+
+                    <div style={{textAlign: 'center', marginTop: '40px', paddingBottom: '20px', color: '#94a3b8', fontSize: '0.85rem', fontWeight: '500'}}>
+                        ✨ Hecho con mucho corazón de <a href="https://gaorsystem.vercel.app/" target="_blank" rel="noopener noreferrer" style={{color: '#e1306c', textDecoration: 'none'}}><strong>Mago26</strong></a> ✨
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    );
+}
+
 function App() {
   // Navigation State
-  const [viewMode, setViewMode] = useState<'landing' | 'preregister' | 'admin' | 'card'>('landing');
+  const [viewMode, setViewMode] = useState<'landing' | 'preregister' | 'admin' | 'card' | 'portal'>('landing');
   const [cardId, setCardId] = useState<string>('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -1463,8 +1960,9 @@ function App() {
   // Flyer Ref - Removed isCapturing state as sharing feature is removed
   const flyerRef = useRef<HTMLDivElement>(null);
 
-  // Admin Backdoor
+  // Secret Clicks Logic
   const [secretClicks, setSecretClicks] = useState(0);
+  const [logoClicks, setLogoClicks] = useState(0); // New state for logo clicks
 
   // --- MISSING FUNCTIONS DEFINED HERE ---
   const scrollToSection = (id: string) => {
@@ -1522,6 +2020,23 @@ function App() {
         if (directoryRef.current) observer.unobserve(directoryRef.current);
     }
   }, [viewMode]);
+
+  // Handle Logo Clicks for Portal Access
+  const handleLogoClick = () => {
+      window.scrollTo({top: 0, behavior: 'smooth'});
+      setMobileMenuOpen(false);
+      
+      setLogoClicks(prev => {
+          const newCount = prev + 1;
+          if (newCount >= 3) {
+              setViewMode('portal');
+              return 0;
+          }
+          // Reset clicks if user stops clicking for 2 seconds
+          setTimeout(() => setLogoClicks(0), 2000);
+          return newCount;
+      });
+  };
 
   const handleSecretClick = () => {
       setSecretClicks(prev => {
@@ -1633,6 +2148,10 @@ function App() {
       return <AdminDashboard onLogout={() => setViewMode('landing')} />;
   }
 
+  if (viewMode === 'portal') {
+      return <EntrepreneurPortal onBack={() => setViewMode('landing')} />;
+  }
+
   if (viewMode === 'card') {
       return <DigitalCardView entrepreneurId={cardId} onBack={() => { setViewMode('landing'); window.history.replaceState(null, '', '/'); }} />;
   }
@@ -1643,7 +2162,7 @@ function App() {
       {/* Navbar */}
       <nav className={`navbar ${scrolled ? 'navbar-scrolled' : ''}`}>
         <div className="nav-inner">
-            <div className="brand" onClick={() => { window.scrollTo({top: 0, behavior: 'smooth'}); setMobileMenuOpen(false); }}>
+            <div className="brand" onClick={handleLogoClick} style={{cursor: 'pointer', userSelect: 'none'}}>
                 <div className="brand-icon"><GiftIcon /></div>
                 <span>SorteoTribu</span>
             </div>
@@ -1844,7 +2363,7 @@ function App() {
       </section>
 
       {/* NEW GRADIENT FOOTER WITH TRANSPARENCY LIST BUTTON */}
-      <footer className="footer-bar-gradient">
+      <footer className="footer-bar-gradient" style={{display: 'flex', flexDirection: 'column'}}>
         <div className="footer-bar-content">
             <div className="footer-im-logo">iM</div>
             <div className="footer-text-main" onDoubleClick={handleSecretClick} onClick={handleSecretClick} style={{cursor: 'pointer'}}>
@@ -1859,6 +2378,9 @@ function App() {
                     Conocer más <ArrowRightIcon />
                 </a>
             </div>
+        </div>
+        <div style={{textAlign: 'center', padding: '10px', fontSize: '0.8rem', color: 'rgba(255,255,255,0.8)'}}>
+             ✨ Hecho con mucho corazón de <a href="https://gaorsystem.vercel.app/" target="_blank" rel="noopener noreferrer" style={{color: 'white', fontWeight: 'bold'}}>Mago26</a> ✨
         </div>
       </footer>
 
@@ -2038,7 +2560,7 @@ function App() {
                                     </div>
                                     
                                     <div className="action-buttons-row">
-                                        <button className="btn-block action-btn whatsapp" onClick={() => window.open(`https://wa.me/51${entry.phone}`, '_blank')}>
+                                        <button className="btn-block action-btn whatsapp" onClick={() => window.open(getWhatsAppLink(entry.phone), '_blank')}>
                                             <WhatsAppIcon /> Contactar
                                         </button>
                                         <button 
